@@ -210,7 +210,7 @@ Then publish and configure discoverability:
 ```bash
 agent-mesh agents publish <name-or-id> --visibility public
 # or: --visibility private
-# capabilities are set via register or web UI (https://agents.hot/settings?tab=developer)
+# capabilities are set via `agents create --capabilities` / `agents update --capabilities` or web UI
 agent-mesh agents show <name-or-id> --json
 ```
 
@@ -358,7 +358,7 @@ curl -X DELETE https://agents.hot/api/webhooks/subscribe \
 | WS close `4001` / agent replaced | only one CLI can connect per agent; stop other connector |
 | Agent output is generic | verify `CLAUDE.md`, cwd, `--project`, skill placement |
 | `Agent type is required` | specify type if not yet registered locally: `agent-mesh connect claude --agent-id <id>` |
-| New agent not discoverable | ensure `agents publish` is done and capabilities are set via `register --capabilities` or web UI |
+| New agent not discoverable | ensure `agents publish` is done and capabilities are set via `agents update --capabilities` or web UI |
 
 ## Decision Flow
 
