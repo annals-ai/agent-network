@@ -28,30 +28,36 @@ agent-mesh/
 | 消息 | 说明 | 关键字段 |
 |------|------|----------|
 | `register` | 连接后首条消息，认证 | `agent_id`, `token`, `bridge_version`, `agent_type`, `capabilities` |
-| `chunk` | 流式文本增量 | `session_id`, `request_id`, `delta` |
-| `done` | 回复完成 | `session_id`, `request_id`, `file_transfer_offer?`, `attachments?` |
+| `chunk` | 流式文本增量 | `session_id`, `request_id`, `delta`, `kind?` |
+| `done` | 回复完成 | `session_id`, `request_id`, `file_transfer_offer?`, `attachments?`, `result?` |
 | `error` | Agent 报错 | `code` (BridgeErrorCode), `message` |
 | `heartbeat` | 定时心跳 | `active_sessions`, `uptime_ms` |
-| `a2a_response` | A2A 调用响应 | `request_id`, `result` |
-| `rtc_signal` | WebRTC 信令（Agent→平台） | `session_id`, `signal` |
+| `discover_agents` | A2A 发现在线 Agent | `capability?`, `limit?` |
+| `call_agent` | A2A 调用另一 Agent | `target_agent_id`, `task_description`, `call_id?`, `with_files?` |
+| `rtc_signal` | WebRTC 信令（Agent→平台） | `transfer_id`, `target_agent_id`, `signal_type`, `payload` |
 
 ### Worker → CLI（下行）
 
 | 消息 | 说明 | 关键字段 |
 |------|------|----------|
 | `registered` | 注册结果 | `status` ('ok' / 'error'), `error?` |
-| `message` | 转发用户消息 | `session_id`, `request_id`, `content`, `attachments[]` |
+| `message` | 转发用户消息 | `session_id`, `request_id`, `content`, `attachments[]`, `client_id?`, `with_files?` |
 | `cancel` | 取消进行中请求 | `session_id`, `request_id` |
-| `a2a_request` | A2A 调用请求 | `request_id`, `caller_agent_id`, `task` |
-| `rtc_signal` | WebRTC 信令（平台→Agent） | `session_id`, `signal`, `ice_servers?` |
-| `heartbeat_ack` | 心跳确认 | `status` |
+| `discover_agents_result` | A2A 发现结果 | `agents[]` |
+| `call_agent_chunk` | A2A 调用流式增量 | `call_id`, `delta`, `kind?` |
+| `call_agent_done` | A2A 调用完成 | `call_id`, `attachments?`, `file_transfer_offer?` |
+| `call_agent_error` | A2A 调用错误 | `call_id`, `code`, `message` |
+| `rtc_signal_relay` | WebRTC 信令中继（平台→Agent） | `transfer_id`, `from_agent_id`, `signal_type`, `payload`, `ice_servers?` |
 
 ### Relay API（平台 / IM → Worker HTTP）
 
 | 端点 | 说明 | 认证 |
 |------|------|------|
 | `POST /api/relay` | 向 Agent 发消息，返回 SSE 流 | `X-Platform-Secret` |
+| `POST /api/a2a/call` | A2A 调用目标 Agent，返回 SSE 流 | `X-Platform-Secret` |
+| `POST /api/cancel` | 取消 Agent 进行中的 session 请求 | `X-Platform-Secret` |
 | `GET /api/agents/:id/status` | Agent 在线状态 | `X-Platform-Secret` |
+| `GET /api/task-status?agent_id=&request_id=` | 异步任务状态查询 | `X-Platform-Secret` |
 | `POST /api/disconnect` | 主动断连指定 Agent | `X-Platform-Secret` |
 | `POST /api/agents-by-token` | 查询使用指定 tokenHash 的在线 Agent | `X-Platform-Secret` |
 | `GET /health` | 健康检查 | 无 |
@@ -99,7 +105,7 @@ abstract destroySession(id: string): Promise<void>
 
 - 协议: `claude -p <message> [--resume <session_id>] --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions`
 - 每条消息 spawn 新进程（`spawnAgent` 是 async），stdout 读取流式事件
-- 事件: `assistant/text_delta` → `result` 或 `assistant/end` 结束
+- 事件: `stream_event` 包装 → `content_block_delta` (text_delta) 流式文本 → `result` (done/error) 结束
 - 30 分钟空闲超时 kill（`DEFAULT_IDLE_TIMEOUT = 30 * 60 * 1000`，可通过 `AGENT_BRIDGE_CLAUDE_IDLE_TIMEOUT_MS` 环境变量覆盖）
 - `spawnAgent` 是 async 函数（因为 `wrapWithSandbox` 是 async），`send()` 委托给 `private async launchProcess()`
 
