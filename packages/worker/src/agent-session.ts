@@ -34,14 +34,14 @@ import type {
 import { BRIDGE_PROTOCOL_VERSION, WS_CLOSE_REPLACED, WS_CLOSE_TOKEN_REVOKED } from '@annals/bridge-protocol';
 
 const HEARTBEAT_TIMEOUT_MS = 50_000;  // 2.5x CLI heartbeat interval (20s)
-const ALARM_INTERVAL_MS = 5 * 60_000; // 5 min — alarm self-renewal period (saves DO writes)
+const ALARM_INTERVAL_MS = 15 * 60_000; // 15 min — alarm is fallback only; heartbeat timeout detected via WS path
 const RELAY_TIMEOUT_MS = 120_000;     // 120s without any chunk or heartbeat = dead
 const REGISTER_TIMEOUT_MS = 10_000;   // 10s to send register after WS connect
 const MAX_RTC_SIGNAL_BUFFERS = 100;   // max transfer_ids in rtcSignalBuffer
 const MAX_SIGNALS_PER_TRANSFER = 50;  // max buffered signals per transfer_id
 const MAX_STORED_RESULTS = 100;       // max result: keys in DO storage
 const MAX_RELAY_BODY_BYTES = 5_242_880; // 5 MB max body for relay/a2a
-const TOKEN_REVALIDATE_INTERVAL_MS = 10 * 60_000; // 10 min — revocation handled by /disconnect
+const TOKEN_REVALIDATE_INTERVAL_MS = 30 * 60_000; // 30 min — revocation handled instantly by /disconnect
 const RATE_LIMIT_CACHE_TTL_MS = 5 * 60_000; // 5 min
 
 interface PendingRelay {
@@ -96,7 +96,8 @@ export class AgentSession implements DurableObject {
   private lastPlatformSyncAt = 0;
   private lastTokenRevalidateAt = 0;
   private rateLimitCache = new Map<string, { allowA2a: boolean; maxCallsPerHour: number; fetchedAt: number }>();
-  private static readonly PLATFORM_SYNC_INTERVAL_MS = 300_000; // 5 min — matches alarm cycle
+  private lastPruneEmptyAt = 0;  // epoch ms — skip prune if empty within 1 hour
+  private static readonly PLATFORM_SYNC_INTERVAL_MS = 900_000; // 15 min — online/offline instant via connect/disconnect
 
   constructor(
     private state: DurableObjectState,
@@ -1119,8 +1120,17 @@ export class AgentSession implements DurableObject {
 
   /** Prune expired / excess result: keys from DO storage (called during heartbeat sync) */
   private async pruneOldResults(): Promise<void> {
+    // Skip if last prune found nothing and was less than 1 hour ago
+    if (this.lastPruneEmptyAt > 0 && Date.now() - this.lastPruneEmptyAt < 60 * 60_000) {
+      return;
+    }
+
     const resultEntries = await this.state.storage.list({ prefix: 'result:' });
-    if (resultEntries.size === 0) return;
+    if (resultEntries.size === 0) {
+      this.lastPruneEmptyAt = Date.now();
+      return;
+    }
+    this.lastPruneEmptyAt = 0; // Reset — we have results to manage
 
     const keysToDelete: string[] = [];
     const entries: Array<{ key: string; completedAt: number }> = [];
