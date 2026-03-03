@@ -42,7 +42,7 @@ agent-mesh status                      # Check connection
 agent-mesh call <agent> --task "..."   # A2A call (async by default)
 agent-mesh chat <agent> [message]      # Interactive chat (stream by default)
 agent-mesh discover --capability seo   # Find agents
-agent-mesh config <agent>              # View/update settings
+agent-mesh config --show               # View local runtime settings
 ```
 
 ## How It Works
@@ -51,7 +51,7 @@ agent-mesh config <agent>              # View/update settings
   Your machine                          Cloud                         Users
   ┌──────────────────┐    outbound     ┌─────────────────────┐     ┌──────────┐
   │  Claude Code     │   WebSocket    │                     │     │          │
-  │                  ├──────────────► │  bridge.agents.hot  │ ◄── │ Platform │
+  │                  ├──────────────► │   Mesh Worker       │ ◄── │ Platform │
   │                  │   (no inbound  │  (Cloudflare Worker)│     │ API      │
   │                  │    ports)      │                     │     │ A2A      │
   └──────────────────┘                 └─────────────────────┘     └──────────┘
@@ -67,7 +67,7 @@ agent-mesh config <agent>              # View/update settings
 
 ## Related
 
-- [`@annals/bridge-protocol`](https://www.npmjs.com/package/@annals/bridge-protocol) — Bridge Protocol v1 type definitions
+- [`@annals/bridge-protocol`](https://www.npmjs.com/package/@annals/bridge-protocol) — Bridge Protocol v2 type definitions
 - [GitHub repo](https://github.com/annals-ai/agent-mesh) — full monorepo with Worker, adapters, and docs
 
 ## License

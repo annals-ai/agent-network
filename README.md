@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
 [![npm downloads](https://img.shields.io/npm/dm/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![tests](https://img.shields.io/badge/tests-76%20passed-brightgreen)](#development)
+[![tests](https://img.shields.io/badge/tests-17%20passed-brightgreen)](#development)
 [![license](https://img.shields.io/github/license/annals-ai/agent-mesh.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
@@ -23,7 +23,7 @@ Agent Mesh handles all of that. One command connects your local agent to the clo
   Local Machine                       Cloud                           Users
   ┌──────────────────┐   Outbound   ┌─────────────────────┐     ┌──────────┐
   │  Claude Code     │────────────►│                     │     │          │
-  │                  │  Mesh Proto  │  bridge.agents.hot  │ ◄── │  Web UI  │
+  │                  │  Mesh Proto  │   Mesh Worker       │ ◄── │  Web UI  │
   │                  │  (no open    │  (Cloudflare Worker) │     │  API     │
   │                  │   ports)     │                     │     │  A2A     │
   └──────────────────┘              └─────────────────────┘     └──────────┘
@@ -62,7 +62,7 @@ This single command handles login, config, and connection. Tickets are one-time 
 
 ## Agent Skills
 
-This repo includes three official skills that teach any AI agent how to use agent-mesh:
+This repo includes four official skills that teach any AI agent how to use agent-mesh:
 
 | Skill | Purpose | File |
 |-------|---------|------|
@@ -92,7 +92,7 @@ Raw URL (for copy-paste prompts):
 
 ## How It Works
 
-1. CLI opens an **outbound** connection to `bridge.agents.hot` (WebSocket — no ports to open)
+1. CLI opens an **outbound** WebSocket connection to the Mesh Worker (no ports to open)
 2. User sends a message on agents.hot — the platform relays it through the Bridge Worker
 3. Bridge Worker pushes the message down the WebSocket to your CLI
 4. CLI hands the message to the local agent (Claude Code spawns a subprocess)
@@ -208,9 +208,8 @@ agent-mesh/
 │   ├── protocol/       # @annals/bridge-protocol — message types and error codes
 │   ├── cli/            # @annals/agent-mesh — CLI tool
 │   ├── worker/         # bridge-worker — Cloudflare Worker (Durable Objects)
-│   └── channels/       # @annals/bridge-channels — IM channels (stub)
 ├── .claude/skills/     # Official skills
-├── tests/              # vitest tests (E2E)
+├── tests/              # vitest tests
 └── CLAUDE.md           # Development guide (protocol spec, adapter docs, deployment)
 ```
 
@@ -262,8 +261,9 @@ The signaling exchange goes through the Bridge Worker (HTTP polling), but actual
 
 `--sandbox` isolates agent subprocesses on macOS via [srt](https://github.com/anthropic-experimental/sandbox-runtime) (Seatbelt):
 
-- Blocks reading: SSH keys, API tokens, credential files (`~/.ssh`, `~/.aws`, `~/.claude.json`, etc.)
-- Allows reading: `.claude/skills/` and `.claude/agents/`
+- Blocks reading: SSH keys, cloud credentials, git configs (`~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.gitconfig`, etc.)
+- Blocks reading: Claude Code privacy data (`~/.claude/projects`, `~/.claude/history.jsonl`, `~/.claude/sessions`)
+- Allows reading: `~/.claude.json`, `.claude/skills/`, `.claude/agents/`, `.claude/settings.json` (Claude Code needs these to function)
 - Write scope: project directory + `/tmp`
 - Network: unrestricted
 - Covers child processes: no subprocess escape
@@ -303,7 +303,7 @@ For detailed protocol specs, adapter internals, and Worker design, see [CLAUDE.m
 npx wrangler deploy --config packages/worker/wrangler.toml
 ```
 
-Route: `bridge.agents.hot/*`, Bindings: `AGENT_SESSIONS` (DO) + `BRIDGE_KV` (KV).
+Bindings: `AGENT_SESSIONS` (DO) + `BRIDGE_KV` (KV).
 
 ### CLI (npm)
 
