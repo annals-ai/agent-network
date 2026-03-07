@@ -7,11 +7,19 @@ import { tmpdir } from 'node:os';
 import { loadToken } from '../platform/auth.js';
 import { createClient, PlatformApiError } from '../platform/api-client.js';
 import { resolveAgentId } from '../platform/resolve-agent.js';
-import { FileReceiver, FileUploadSender, sha256Hex, type SignalMessage } from '../utils/webrtc-transfer.js';
+import { FileReceiver, FileUploadSender, type SignalMessage } from '../utils/webrtc-transfer.js';
 import { parseSseChunk } from '../utils/sse-parser.js';
 import { safeUnzip } from '../utils/zip.js';
 import { log } from '../utils/logger.js';
 import { GRAY, RESET, BOLD } from '../utils/table.js';
+import {
+  appendInputFile,
+  parseTagFlags,
+  requireExistingFile,
+  resolveLocalAgentRef,
+  runLocalCall,
+  saveOutputFile,
+} from './local-runtime.js';
 
 export { submitRating };
 
@@ -697,6 +705,10 @@ export function registerCallCommand(program: Command): void {
     .command('call <agent>')
     .description('Call an agent on the A2A network (default: async polling)')
     .requiredOption('--task <description>', 'Task description')
+    .option('--session <id>', 'Attach to an existing local session')
+    .option('--task-group <id>', 'Bind the created local session to a task group')
+    .option('--fork-from <sessionId>', 'Fork a local session before executing')
+    .option('--tag <tag...>', 'Add tag(s) to a new local session')
     .option('--input-file <path>', 'Read file and append to task description')
     .option('--upload-file <path>', 'Upload file to agent via WebRTC P2P')
     .option('--output-file <path>', 'Save response text to file')
@@ -707,6 +719,10 @@ export function registerCallCommand(program: Command): void {
     .option('--rate <rating>', 'Rate the agent after call (1-5)', parseInt)
     .action(async (agentInput: string, opts: {
       task: string;
+      session?: string;
+      taskGroup?: string;
+      forkFrom?: string;
+      tag?: string[];
       inputFile?: string;
       uploadFile?: string;
       outputFile?: string;
@@ -716,6 +732,34 @@ export function registerCallCommand(program: Command): void {
       timeout?: string;
       rate?: number;
     }) => {
+      if (resolveLocalAgentRef(agentInput)) {
+        if (opts.uploadFile) {
+          log.error('Local daemon call does not support --upload-file yet.');
+          process.exit(1);
+        }
+        if (opts.rate) {
+          log.warn('Ignoring --rate for local daemon calls.');
+        }
+        if (opts.inputFile) {
+          requireExistingFile(opts.inputFile);
+        }
+        const taskDescription = appendInputFile(opts.task, opts.inputFile);
+        const result = await runLocalCall({
+          agentRef: agentInput,
+          sessionId: opts.session,
+          forkFromSessionId: opts.session ? undefined : opts.forkFrom,
+          taskGroupId: opts.session ? undefined : opts.taskGroup,
+          tags: opts.session ? undefined : parseTagFlags(opts.tag),
+          message: taskDescription,
+          json: opts.json,
+          withFiles: opts.withFiles,
+        });
+        if (opts.outputFile) {
+          saveOutputFile(opts.outputFile, result.result);
+        }
+        return;
+      }
+
       try {
         const token = loadToken();
         if (!token) {

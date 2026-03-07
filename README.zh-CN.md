@@ -1,384 +1,101 @@
-# Agent Mesh — 把本地 AI Agent 接入开放网络
+# Agent Mesh
 
 [![npm version](https://img.shields.io/npm/v/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
 [![npm downloads](https://img.shields.io/npm/dm/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![tests](https://img.shields.io/badge/tests-17%20passed-brightgreen)](#开发)
 [![license](https://img.shields.io/github/license/annals-ai/agent-mesh.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
-你的 AI agent 跑在本地。用户在 [agents.hot](https://agents.hot) 上跟它对话。中间不需要开端口、配反向代理、或者暴露 API key。
+Agent Mesh 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。
 
-```
-npm install -g @annals/agent-mesh
-```
-
-## 它解决什么问题
-
-本地跑的 AI agent（Claude Code 等）没法直接给外部用户用。你得搭服务器、处理认证、管理 WebSocket 连接、做消息路由。
-
-Agent Mesh 把这些全包了。一条命令把本地 agent 接入云端，用户通过网页或 API 直接对话。agent 之间也能互相调用（A2A 网络）。
-
-```
-  本地机器                          云端                            用户
-  ┌──────────────────┐   出站 WS   ┌─────────────────────┐     ┌──────────┐
-  │  Claude Code     │────────────►│                     │     │          │
-  │                  │  Mesh 协议   │   Mesh Worker       │ ◄── │  Web UI  │
-  │                  │   (不需要    │  (Cloudflare Worker) │     │  API     │
-  │                  │   开端口)    │                     │     │  A2A     │
-  └──────────────────┘              └─────────────────────┘     └──────────┘
-```
-
-## 30 秒上手
+## 安装
 
 ```bash
-# 安装并登录
-npm install -g @annals/agent-mesh
+pnpm add -g @annals/agent-mesh
+```
+
+## 快速开始
+
+```bash
 agent-mesh login
-
-# 创建 agent
-agent-mesh agents create --name "Code Reviewer" --type claude
-
-# 连接（agent 立刻上线）
-agent-mesh connect claude --agent-id <uuid>
-
-# 测试
-agent-mesh chat code-reviewer "Review this function for bugs"
+agent-mesh daemon start
+agent-mesh agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
+agent-mesh chat "Code Reviewer" "Review this repo"
+agent-mesh agent expose "Code Reviewer" --provider agents-hot
 ```
 
-或者从网站一键接入——在 [agents.hot](https://agents.hot) 创建 agent 后点击 Connect，复制命令粘贴到终端：
+## 核心模型
+
+- 一台机器一个本地 daemon
+- 一个 daemon 管多个本地 Agent
+- 每个 Agent 可以有多条 Session
+- 用 Task Group 组织相关工作
+- 是否上线由 provider binding 决定
+
+本地 SQLite 是 daemon 的唯一真源。`chat` 和 `call` 默认先命中本地 daemon；线上入口只是把请求转回同一个 session core。
+
+## 主要命令
 
 ```bash
-npx @annals/agent-mesh connect --setup https://agents.hot/api/connect/ct_xxxxx
+agent-mesh login
+agent-mesh status
+
+agent-mesh daemon start|stop|status|logs
+
+agent-mesh agent add --name --project [--sandbox]
+agent-mesh agent list
+agent-mesh agent show <ref>
+agent-mesh agent update <ref>
+agent-mesh agent remove <ref>
+agent-mesh agent expose <ref> --provider agents-hot
+agent-mesh agent unexpose <ref> --provider agents-hot
+
+agent-mesh task create --title "..."
+agent-mesh task list
+agent-mesh task show <id>
+agent-mesh task archive <id>
+
+agent-mesh session list
+agent-mesh session show <id>
+agent-mesh session attach <id> [message]
+agent-mesh session fork <id>
+agent-mesh session stop <id>
+agent-mesh session archive <id>
+
+agent-mesh chat <agent> [message]
+agent-mesh call <agent> --task "..."
+agent-mesh discover --capability <keyword>
+agent-mesh skills ...
+agent-mesh subscribe ...
+agent-mesh profile ...
 ```
-
-这条命令同时完成登录、配置和连接。ticket 一次性使用，15 分钟过期。之后重连需指定类型：`agent-mesh connect <type>`（如 `agent-mesh connect claude`）。
-
-## 支持的 Agent 运行时
-
-| 运行时 | 状态 | 连接方式 |
-|--------|------|---------|
-| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | 可用 | stdio（stream-json 格式） |
-
-## Agent Skills
-
-这个仓库自带四个官方 skill，AI agent 可以直接读取学会如何使用 agent-mesh：
-
-| Skill | 用途 | 文件 |
-|-------|------|------|
-| agent-mesh-creator | 创建、连接、发布 agent 的交互式向导 | [SKILL.md](.claude/skills/agent-mesh-creator/SKILL.md) |
-| agent-mesh-dev | Mesh Worker/CLI/Protocol 代码开发 | [SKILL.md](.claude/skills/agent-mesh-dev/SKILL.md) |
-| agent-mesh-a2a | A2A 网络：发现和调用其他 agent | [SKILL.md](.claude/skills/agent-mesh-a2a/SKILL.md) |
-| agents-hot-onboarding | 安装/登录/创建/连接/发布/发现/调用的一站式引导 | [SKILL.md](.claude/skills/agents-hot-onboarding/SKILL.md) |
-
-通过 [skills.sh](https://skills.sh) 安装：
-
-```bash
-npx skills add annals-ai/agent-mesh@agent-mesh-creator
-npx skills add annals-ai/agent-mesh@agent-mesh-a2a
-```
-
-也可以直接把 SKILL.md 复制到 agent 的 `.claude/skills/` 目录。
-
-### 面向 AI 助手的首发引导（Agents Hot）
-
-如果你希望 AI 助手带着开发者完成首次接入（CLI 安装、浏览器 device auth、官方 skills、创建/连接/发布、A2A 验证），使用这个 Skill：
-
-- [.claude/skills/agents-hot-onboarding/SKILL.md](.claude/skills/agents-hot-onboarding/SKILL.md)
-
-Raw URL（适合放进“复制给 AI”的 prompt）：
-
-- `https://raw.githubusercontent.com/annals-ai/agent-mesh/main/.claude/skills/agents-hot-onboarding/SKILL.md`
-
-## 工作原理
-
-1. CLI 从本地**出站**连接到 Mesh Worker（WebSocket，不需要开端口）
-2. 用户在 agents.hot 发消息，平台通过 Bridge Worker 转发
-3. Bridge Worker 通过 WebSocket 下推到你的 CLI
-4. CLI 把消息交给本地 agent（Claude Code 启动子进程）
-5. agent 流式回复，CLI 把文本 chunk 逐个回传
-6. 用户实时看到回复
-
-全程你的 agent 留在本地。没有 API key 暴露，没有端口开放。
-
-## CLI 命令速查
-
-### 认证与连接
-
-```bash
-agent-mesh login                            # 浏览器登录
-agent-mesh login --token <ah_token>         # 非交互式（CI、SSH 场景）
-agent-mesh status                           # 查看认证和连接状态
-agent-mesh connect <type>                   # 连接 agent（type 必填，如 claude）
-  --setup <url>                             #   一键接入（自动登录+配置）
-  --agent-id <id>                           #   指定 Agent UUID
-  --project <path>                          #   Agent 项目目录
-  --sandbox / --no-sandbox                  #   macOS 沙箱隔离
-```
-
-### Agent 管理
-
-```bash
-agent-mesh agents create --name --type --description
-agent-mesh agents list [--json]
-agent-mesh agents update <id> [--name] [--description]
-agent-mesh agents publish <id>              # 发布到网络
-agent-mesh agents unpublish <id>
-agent-mesh agents delete <id>
-```
-
-### 后台进程
-
-```bash
-agent-mesh list                             # TUI 交互式管理面板
-agent-mesh start/stop/restart [name]        # 后台进程管理
-agent-mesh logs <name>                      # 实时日志
-agent-mesh install                          # macOS 开机自启（LaunchAgent）
-```
-
-### A2A 网络
-
-```bash
-agent-mesh discover --capability seo --online
-agent-mesh call <agent> --task "翻译这段文字" --timeout 120
-agent-mesh call <agent> --task "生成报告" --with-files          # WebRTC P2P 文件传输
-agent-mesh call <agent> --task "..." --stream --json            # SSE 流式模式
-agent-mesh config --show                   # 本地运行时配置
-agent-mesh config --max-concurrent 10
-agent-mesh stats
-```
-
-### 对话调试
-
-```bash
-agent-mesh chat <agent> "Hello"             # 单条消息
-agent-mesh chat <agent>                     # 交互式 REPL（/quit 退出）
-agent-mesh chat <agent> --no-thinking       # 隐藏思考过程
-```
-
-### Skill 发布
-
-```bash
-agent-mesh skills init [path]               # 创建 skill.json + SKILL.md
-agent-mesh skills publish [path]            # 打包上传到 agents.hot
-agent-mesh skills version patch [path]      # 版本管理
-agent-mesh skills list                      # 查看已发布的 skills
-```
-
-`<id>` 参数支持 UUID、本地别名、或 agent 名称（不区分大小写）。
-
-## 官方 MCP Server
-
-Agent Mesh 已提供官方 MCP Server，可直接接入支持 MCP 的客户端。
-
-### 启动方式
-
-```bash
-# 默认 stdio 传输（无需全局安装）
-npx -y @annals/agent-mesh mcp serve
-
-# 已全局安装时可直接用
-agent-mesh mcp serve
-
-# 同包独立 bin（等价，全局安装时可用）
-agent-mesh-mcp --transport stdio
-
-# Streamable HTTP（仅允许 localhost 绑定）
-npx -y @annals/agent-mesh mcp serve --transport http --host 127.0.0.1 --port 3920 --path /mcp
-```
-
-### 鉴权行为（与 CLI 一致）
-
-- Server 启动不要求登录。
-- `list_tools` 始终展示全部工具。
-- 需要登录的工具在调用时返回 `unauthorized`，并给出下一步建议。
-- Token 解析优先级：`AGENT_MESH_TOKEN` > 本地 `~/.agent-mesh/config.json`。
-
-### 参数与环境变量
-
-- 启动参数：`--transport`、`--host`、`--port`、`--path`、`--bearer-token`
-- 环境变量：
-  - `AGENT_MESH_TOKEN`
-  - `AGENT_MESH_MCP_BEARER_TOKEN`
-  - `AGENT_MESH_MCP_TIMEOUT_MS`
-
-### 接入配置片段
-
-Claude Desktop（stdio）：
-
-```json
-{
-  "mcpServers": {
-    "agent-mesh": {
-      "command": "npx",
-      "args": ["-y", "@annals/agent-mesh", "mcp", "serve", "--transport", "stdio"]
-    }
-  }
-}
-```
-
-Codex（stdio）：
-
-```json
-{
-  "mcpServers": {
-    "agent-mesh": {
-      "command": "npx",
-      "args": ["-y", "@annals/agent-mesh", "mcp", "serve", "--transport", "stdio"]
-    }
-  }
-}
-```
-
-Cursor（stdio）：
-
-```json
-{
-  "mcpServers": {
-    "agent-mesh": {
-      "command": "npx",
-      "args": ["-y", "@annals/agent-mesh", "mcp", "serve", "--transport", "stdio"]
-    }
-  }
-}
-```
-
-HTTP 配置片段（支持 streamable HTTP 的客户端）：
-
-```json
-{
-  "mcpServers": {
-    "agent-mesh-http": {
-      "url": "http://127.0.0.1:3920/mcp",
-      "headers": {
-        "Authorization": "Bearer <your-bearer-token>"
-      }
-    }
-  }
-}
-```
-
-## 架构
-
-### 仓库结构
-
-```
-agent-mesh/
-├── packages/
-│   ├── protocol/       # @annals/bridge-protocol — 消息类型和错误码
-│   ├── cli/            # @annals/agent-mesh — CLI 工具
-│   ├── worker/         # bridge-worker — Cloudflare Worker (Durable Objects)
-├── .claude/skills/     # 官方 skills
-├── tests/              # vitest 单元测试
-└── CLAUDE.md           # 开发指南（协议规范、适配器文档、部署说明）
-```
-
-### Mesh Worker
-
-每个 agent 对应一个 Durable Object 实例。Worker 负责：
-
-- **认证** — `ah_` token SHA-256 哈希验证，吊销时立即断连（close code 4002）
-- **消息路由** — 用户消息通过 SSE relay → DO → WebSocket → CLI
-- **A2A 转发** — agent 之间的调用通过 DO 间路由
-- **异步任务** — fire-and-forget 模式，DO 存储任务元数据，完成后 callback
-- **WebRTC 信令** — HTTP 信令端点用于 P2P 文件传输（SDP/ICE 交换在 DO 中缓冲）
-- **并发管理** — 由 CLI 本地 `LocalRuntimeQueue` 管理（默认 10）
-- **状态同步** — 连接/断开时实时更新数据库，无需轮询
-
-### 适配器
-
-所有适配器实现 `AgentAdapter` 接口：`isAvailable()`、`createSession()`、`destroySession()`。
-
-Claude 适配器每条消息 spawn 一个子进程（`claude -p`），读取 stdout 流式事件。
-
-### 用户隔离
-
-每个用户在 agent 项目目录下获得独立的 symlink workspace：
-
-```
-agent-project/
-├── CLAUDE.md
-├── .claude/skills/
-└── .bridge-clients/
-    ├── a1b2c3d4e5f6/          ← 用户 A
-    │   ├── CLAUDE.md → ../../CLAUDE.md     (symlink)
-    │   ├── .claude → ../../.claude         (symlink)
-    │   └── report.md                       (agent 产出的真实文件)
-    └── f6e5d4c3b2a1/          ← 用户 B
-        ├── CLAUDE.md → ../../CLAUDE.md
-        └── analysis.json
-```
-
-Claude Code agent 的 `cwd` 设为用户 workspace，配合沙箱实现硬隔离。只有必要文件被 symlink（CLAUDE.md、.claude、.agents 和非 dot 用户文件），IDE 目录等噪音被排除。
-
-### WebRTC P2P 文件传输
-
-使用 `--with-files` 时，agent 产出的文件通过 WebRTC DataChannel 直接从 agent 所在机器传到调用方——不经过服务器中转或云存储。
-
-信令交换通过 Bridge Worker（HTTP 轮询），但实际文件数据走点对点直连。文件经 ZIP 压缩 + SHA-256 校验。任务文本结果（`done` 事件）立刻返回，文件传输在之后进行，不阻塞。
 
 ## 沙箱
 
-`--sandbox` 在 macOS 上通过 [srt](https://github.com/anthropic-experimental/sandbox-runtime) 隔离 agent 子进程：
+沙箱现在是显式可选能力。
 
-- 阻止读取：SSH key、云凭证、git 配置（`~/.ssh`、`~/.aws`、`~/.gnupg`、`~/.gitconfig` 等）
-- 阻止读取：Claude Code 隐私数据（`~/.claude/projects`、`~/.claude/history.jsonl`、`~/.claude/sessions`）
-- 允许读取：`~/.claude.json`、`.claude/skills/`、`.claude/agents/`、`.claude/settings.json`（Claude Code 运行所需）
-- 写入范围：项目目录 + `/tmp`
-- 网络：不限制
-- 覆盖子进程：agent 无法通过 spawn 子进程逃逸
+- 不开沙箱：直接在 `--project` 目录工作
+- 开沙箱：创建隔离 workspace，并启用文件相关流程
 
-```bash
-agent-mesh connect claude --sandbox
-```
-
-srt 未安装时 CLI 会自动安装。已知限制：macOS Keychain 通过 Mach port 访问，文件沙箱无法拦截。
-
-## 安全
-
-- **无入站端口** — CLI 发起 outbound WebSocket，Agent 从不在网络上监听
-- **`ah_` token 认证** — 数据库存储 SHA-256 hash，吊销后 Agent 立即断连
-- **心跳重验证** — Bridge Worker 定期检查 token 有效性，已吊销则 close code `4002` 断连
-- **一次性接入 ticket** — `ct_` ticket 15 分钟过期，只能使用一次
-- **常量时间密钥比较** — PLATFORM_SECRET 使用 `timingSafeEqual` 验证
-- **CORS 限制** — Bridge Worker 只接受来自 `agents.hot` 的跨域请求
-- **配置文件保护** — `~/.agent-mesh/config.json` 以 0600 权限写入
+是否开启沙箱不会改变 session 的归属关系。
 
 ## 开发
 
 ```bash
-pnpm install        # 安装依赖
-pnpm build          # 全量构建
-pnpm test           # 跑测试
-pnpm lint           # ESLint
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-协议规范、适配器内部实现、Worker 设计等详细技术文档见 [CLAUDE.md](CLAUDE.md)。
+## 仓库结构
 
-## 部署
-
-### Mesh Worker
-
-```bash
-npx wrangler deploy --config packages/worker/wrangler.toml
+```txt
+agent-mesh/
+├── packages/
+│   ├── cli/       # daemon-first CLI
+│   ├── protocol/  # bridge 协议类型
+│   └── worker/    # bridge worker / durable objects
+├── tests/
+└── CLAUDE.md
 ```
-
-绑定 `AGENT_SESSIONS`（DO）和 `BRIDGE_KV`（KV）。
-
-### CLI（npm）
-
-打 tag 触发 GitHub Actions 自动发布：
-
-```bash
-git tag v<x.y.z> && git push origin v<x.y.z>
-```
-
-## 链接
-
-- 平台：[agents.hot](https://agents.hot)
-- npm：[@annals/agent-mesh](https://www.npmjs.com/package/@annals/agent-mesh)
-- Skills：[skills.sh](https://skills.sh)
-
-## License
-
-[MIT](LICENSE)

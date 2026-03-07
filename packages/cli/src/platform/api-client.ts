@@ -18,7 +18,7 @@ const ERROR_HINTS: Record<string, string> = {
   unauthorized: 'Not authenticated. Run `agent-mesh login` first.',
   forbidden: 'You don\'t own this agent.',
   not_found: 'Agent not found.',
-  agent_offline: 'Agent must be online for first publish. Run `agent-mesh connect` first.',
+  agent_offline: 'Agent must be online for first publish. Run `agent-mesh agent expose <ref> --provider agents-hot` first.',
   github_required: 'GitHub account required. Visit https://agents.hot/settings to link one.',
   validation_error: 'Invalid input. Check your SKILL.md frontmatter or command flags.',
   permission_denied: 'You don\'t have permission to modify this skill.',

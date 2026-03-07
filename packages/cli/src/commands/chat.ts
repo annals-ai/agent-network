@@ -12,6 +12,13 @@ import { FileUploadSender, type SignalMessage } from '../utils/webrtc-transfer.j
 import { parseSseChunk } from '../utils/sse-parser.js';
 import { log } from '../utils/logger.js';
 import { BOLD, GRAY, GREEN, RESET, YELLOW } from '../utils/table.js';
+import {
+  interactiveLocalChat,
+  listLocalSessions,
+  parseTagFlags,
+  resolveLocalAgentRef,
+  runLocalChat,
+} from './local-runtime.js';
 
 const DEFAULT_BASE_URL = 'https://agents.hot';
 
@@ -375,19 +382,62 @@ function handleSseEvent(
 export function registerChatCommand(program: Command): void {
   program
     .command('chat <agent> [message]')
-    .description('Chat with an agent through the platform (for debugging)')
+    .description('Chat with an agent (local daemon first, platform fallback)')
     .option('--no-thinking', 'Hide thinking/reasoning output')
     .option('--async', 'Use async polling mode (default is stream)')
     .option('--session <key>', 'Resume an existing session')
+    .option('--task-group <id>', 'Bind the created local session to a task group')
+    .option('--fork-from <sessionId>', 'Fork a local session before sending the message')
+    .option('--tag <tag...>', 'Add tag(s) to a new local session')
     .option('--list', 'List recent sessions with this agent')
     .option('--base-url <url>', 'Platform base URL', DEFAULT_BASE_URL)
     .action(async (agentInput: string, inlineMessage: string | undefined, opts: {
       thinking: boolean;
       async: boolean;
       session?: string;
+      taskGroup?: string;
+      forkFrom?: string;
+      tag?: string[];
       list?: boolean;
       baseUrl: string;
     }) => {
+      const localTags = parseTagFlags(opts.tag);
+      if (resolveLocalAgentRef(agentInput)) {
+        if (opts.list) {
+          await listLocalSessions(agentInput);
+          return;
+        }
+
+        if (inlineMessage) {
+          await runLocalChat({
+            agentRef: agentInput,
+            sessionId: opts.session,
+            forkFromSessionId: opts.session ? undefined : opts.forkFrom,
+            taskGroupId: opts.session ? undefined : opts.taskGroup,
+            tags: opts.session ? undefined : localTags,
+            message: inlineMessage,
+            showThinking: opts.thinking,
+          });
+          return;
+        }
+
+        if (!process.stdin.isTTY) {
+          log.error('Interactive mode requires a TTY. Provide a message argument for non-interactive use.');
+          process.exit(1);
+        }
+
+        log.banner(`Local chat with ${agentInput}`);
+        await interactiveLocalChat({
+          agentRef: agentInput,
+          sessionId: opts.session,
+          forkFromSessionId: opts.session ? undefined : opts.forkFrom,
+          taskGroupId: opts.session ? undefined : opts.taskGroup,
+          tags: opts.session ? undefined : localTags,
+          showThinking: opts.thinking,
+        });
+        return;
+      }
+
       const token = loadToken();
       if (!token) {
         log.error('Not authenticated. Run `agent-mesh login` first.');

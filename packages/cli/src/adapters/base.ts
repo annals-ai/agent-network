@@ -8,6 +8,8 @@ export interface AdapterConfig {
   sandboxEnabled?: boolean;
   /** The agent's own UUID on the platform — injected into subprocess env as AGENT_BRIDGE_AGENT_ID for A2A caller tracking. */
   agentId?: string;
+  /** Persisted runtime session identifier used to resume CLI-native agent sessions after daemon restart. */
+  resumeSessionId?: string;
 }
 
 export type ToolEventKind = 'tool_start' | 'tool_input' | 'tool_result' | 'thinking' | 'status';
@@ -45,6 +47,7 @@ export interface SessionHandle {
   onToolEvent(cb: (event: ToolEvent) => void): void;
   onDone(cb: (payload?: SessionDonePayload) => void): void;
   onError(cb: (error: Error) => void): void;
+  getResumeSessionId(): string | undefined;
   kill(): void;
 }
 

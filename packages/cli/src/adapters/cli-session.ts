@@ -75,6 +75,7 @@ class CliSession implements SessionHandle {
     this.profile = profile;
     this.parser = profile.createParser();
     this.sandboxFilesystem = sandboxFilesystem;
+    this.claudeSessionId = config.resumeSessionId;
   }
 
   send(
@@ -322,6 +323,10 @@ class CliSession implements SessionHandle {
 
   onError(cb: (error: Error) => void): void {
     this.errorCallbacks.push(cb);
+  }
+
+  getResumeSessionId(): string | undefined {
+    return this.claudeSessionId;
   }
 
   kill(): void {
