@@ -13,6 +13,7 @@ import {
   sendLocalChatTurn,
   stopSession,
   subscribeLogs,
+  subscribeSessionMessages,
   stopDaemon,
   unexposeAgent,
   updateAgent,
@@ -221,6 +222,17 @@ export default function App() {
         setMessagesLoading(false);
       });
   }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (activeTab !== 'transcript' || !selectedSessionId || typeof EventSource === 'undefined') {
+      return;
+    }
+
+    return subscribeSessionMessages(selectedSessionId, (snapshot) => {
+      setMessages(snapshot.items);
+      setMessageError(null);
+    });
+  }, [activeTab, selectedSessionId]);
 
   useEffect(() => {
     if (activeTab !== 'logs' || typeof EventSource === 'undefined') {

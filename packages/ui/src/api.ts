@@ -77,6 +77,10 @@ export interface SessionMessage {
   createdAt: string;
 }
 
+export interface SessionMessageStreamSnapshot {
+  items: SessionMessage[];
+}
+
 export interface TaskRecord {
   id: string;
   title: string;
@@ -210,6 +214,13 @@ export async function getDashboardData(): Promise<DashboardData> {
 export async function getSessionMessages(sessionId: string): Promise<SessionMessage[]> {
   const response = await fetchJson<{ items: SessionMessage[] }>(`/api/sessions/${sessionId}/messages`);
   return response.items;
+}
+
+export function subscribeSessionMessages(
+  sessionId: string,
+  onMessage: (snapshot: SessionMessageStreamSnapshot) => void,
+): () => void {
+  return subscribeEventStream<SessionMessageStreamSnapshot>(`/api/sessions/${sessionId}/messages/stream`, onMessage);
 }
 
 export async function stopSession(sessionId: string): Promise<SessionRecord> {

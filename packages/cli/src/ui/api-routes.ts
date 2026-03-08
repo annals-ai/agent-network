@@ -285,6 +285,37 @@ function haveLogSnapshotsChanged(
   return current.items.some((line, index) => line !== next.items[index]);
 }
 
+function readSessionMessagesSnapshot(
+  options: UiApiRoutesOptions,
+  sessionId: string,
+): { items: ReturnType<DaemonStore['getSessionMessages']> } {
+  const session = options.store.getSession(sessionId);
+  if (!session) {
+    throw new Error(`Session not found: ${sessionId}`);
+  }
+
+  return {
+    items: options.store.getSessionMessages(sessionId),
+  };
+}
+
+function haveSessionMessageSnapshotsChanged(
+  current: { items: ReturnType<DaemonStore['getSessionMessages']> },
+  next: { items: ReturnType<DaemonStore['getSessionMessages']> },
+): boolean {
+  if (current.items.length !== next.items.length) {
+    return true;
+  }
+
+  return current.items.some((message, index) => {
+    const nextMessage = next.items[index];
+    return !nextMessage
+      || message.id !== nextMessage.id
+      || message.seq !== nextMessage.seq
+      || message.content !== nextMessage.content;
+  });
+}
+
 export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHandler {
   return async ({ method, pathname, searchParams, response, request }) => {
     if (!pathname.startsWith('/api/')) {
@@ -622,6 +653,21 @@ export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHa
         writeJson(response, 200, {
           items: options.store.getSessionMessages(session.id),
         });
+        return true;
+      }
+
+      if (method === 'GET' && segments.length === 5 && segments[1] === 'sessions' && segments[3] === 'messages' && segments[4] === 'stream') {
+        const session = options.store.getSession(segments[2]!);
+        if (!session) {
+          writeJson(response, 404, { error: 'not_found', message: `Session not found: ${segments[2]}` });
+          return true;
+        }
+
+        streamSnapshot(
+          { request, response },
+          () => readSessionMessagesSnapshot(options, session.id),
+          haveSessionMessageSnapshotsChanged,
+        );
         return true;
       }
 

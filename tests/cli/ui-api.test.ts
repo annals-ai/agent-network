@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AgentMeshDaemonServer } from '../../packages/cli/src/daemon/server.js';
 import { DaemonStore } from '../../packages/cli/src/daemon/store.js';
+import { parseSseChunk } from '../../packages/cli/src/utils/sse-parser.js';
 
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -25,6 +26,63 @@ async function postJson<T>(url: string, body: Record<string, unknown>): Promise<
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json() as Promise<T>;
+}
+
+async function openJsonSseStream(url: string): Promise<{
+  next<T>(timeoutMs?: number): Promise<T>;
+  close(): Promise<void>;
+}> {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'text/event-stream',
+    },
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to open stream: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const queue: string[] = [];
+  let carry = '';
+
+  return {
+    async next<T>(timeoutMs = 5_000): Promise<T> {
+      const deadline = Date.now() + timeoutMs;
+
+      while (queue.length === 0) {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          throw new Error(`Timed out waiting for SSE event from ${url}`);
+        }
+
+        const result = await Promise.race([
+          reader.read(),
+          new Promise<{ timeout: true }>((resolve) => {
+            setTimeout(() => resolve({ timeout: true }), remaining);
+          }),
+        ]);
+
+        if ('timeout' in result) {
+          throw new Error(`Timed out waiting for SSE event from ${url}`);
+        }
+
+        if (result.done) {
+          throw new Error(`SSE stream closed before an event arrived: ${url}`);
+        }
+
+        const parsed = parseSseChunk(decoder.decode(result.value, { stream: true }), carry);
+        carry = parsed.carry;
+        queue.push(...parsed.events);
+      }
+
+      return JSON.parse(queue.shift()!) as T;
+    },
+    async close(): Promise<void> {
+      await reader.cancel();
+    },
+  };
 }
 
 describe('AgentMeshDaemonServer UI API', () => {
@@ -169,6 +227,48 @@ describe('AgentMeshDaemonServer UI API', () => {
     expect(archived.session.status).toBe('archived');
     expect(fork.session.parentSessionId).toBe(session.id);
     expect(fork.session.title).toBe('Experiment');
+  });
+
+  it('streams transcript updates through the ui api', async () => {
+    const store = new DaemonStore(dbPath);
+    const agent = store.createAgent({
+      name: 'Live Agent',
+      projectPath: '/tmp/live-agent',
+      capabilities: ['streaming'],
+    });
+    const session = store.createSession({
+      agentId: agent.id,
+      title: 'Realtime transcript',
+      status: 'active',
+    });
+    store.appendMessage({
+      sessionId: session.id,
+      role: 'user',
+      kind: 'chat',
+      content: 'Start the live stream.',
+    });
+    store.close();
+
+    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    const address = await server.listenForTest();
+    const stream = await openJsonSseStream(`${address.uiBaseUrl}/api/sessions/${session.id}/messages/stream`);
+    const serverStore = (server as any).store as DaemonStore;
+
+    const initial = await stream.next<{ items: Array<{ content: string }> }>();
+    serverStore.appendMessage({
+      sessionId: session.id,
+      role: 'assistant',
+      kind: 'chat',
+      content: 'Transcript update received.',
+    });
+    const updated = await stream.next<{ items: Array<{ content: string }> }>();
+
+    await stream.close();
+
+    expect(initial.items.map((message) => message.content)).toEqual([
+      'Start the live stream.',
+    ]);
+    expect(updated.items.at(-1)?.content).toBe('Transcript update received.');
   });
 
   it('creates and continues sessions through the ui api chat endpoint', async () => {
