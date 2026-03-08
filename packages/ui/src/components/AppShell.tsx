@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { NativeSelect } from '@/components/ui/native-select';
 import { useI18n, type LanguagePreference } from '@/lib/i18n';
+import { useTheme, type ThemePreference } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 interface AppShellProps {
@@ -17,6 +18,7 @@ interface AppShellProps {
 
 export function AppShell({ uiBaseUrl, startedAt, refreshing, onRefresh, children }: AppShellProps) {
   const { language, setLanguage, t, formatDateTime } = useI18n();
+  const { theme, setTheme } = useTheme();
   const navItems = [
     { id: 'overview', label: t('shell.nav.overview') },
     { id: 'agents', label: t('shell.nav.agents') },
@@ -47,19 +49,36 @@ export function AppShell({ uiBaseUrl, startedAt, refreshing, onRefresh, children
                 </div>
               </div>
 
-              <div className="grid gap-2">
-                <span className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">
-                  {t('common.language')}
-                </span>
-                <NativeSelect
-                  value={language}
-                  onChange={(event) => setLanguage(event.target.value as LanguagePreference)}
-                  aria-label={t('common.language')}
-                >
-                  <option value="system">{t('common.auto')}</option>
-                  <option value="en">{t('common.english')}</option>
-                  <option value="zh">{t('common.chinese')}</option>
-                </NativeSelect>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">
+                    {t('common.language')}
+                  </span>
+                  <NativeSelect
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value as LanguagePreference)}
+                    aria-label={t('common.language')}
+                  >
+                    <option value="system">{t('common.auto')}</option>
+                    <option value="en">{t('common.english')}</option>
+                    <option value="zh">{t('common.chinese')}</option>
+                  </NativeSelect>
+                </div>
+
+                <div className="grid gap-2">
+                  <span className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">
+                    {t('common.theme')}
+                  </span>
+                  <NativeSelect
+                    value={theme}
+                    onChange={(event) => setTheme(event.target.value as ThemePreference)}
+                    aria-label={t('common.theme')}
+                  >
+                    <option value="system">{t('common.system')}</option>
+                    <option value="light">{t('common.light')}</option>
+                    <option value="dark">{t('common.dark')}</option>
+                  </NativeSelect>
+                </div>
               </div>
 
               <nav aria-label="Sections" className="grid gap-1">
