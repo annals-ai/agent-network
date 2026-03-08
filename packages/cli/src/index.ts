@@ -12,6 +12,7 @@ import { registerProfileCommand } from './commands/profile.js';
 import { registerDaemonCommand } from './commands/daemon.js';
 import { registerTaskCommand } from './commands/task.js';
 import { registerSessionCommand } from './commands/session.js';
+import { registerUiCommand } from './commands/ui.js';
 import { maybeAutoUpgradeOnStartup } from './utils/auto-updater.js';
 import { maybePrintDocsHint } from './utils/config.js';
 
@@ -42,6 +43,7 @@ program.configureOutput({
 registerLoginCommand(program);
 registerStatusCommand(program);
 registerDaemonCommand(program);
+registerUiCommand(program);
 registerAgentCommand(program);
 registerTaskCommand(program);
 registerSessionCommand(program);

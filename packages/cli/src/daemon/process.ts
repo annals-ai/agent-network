@@ -7,7 +7,24 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { getDaemonLogPath, getDaemonPidPath, getDaemonSocketPath, ensureDaemonDirs } from './paths.js';
-import { isDaemonReachable } from './client.js';
+import { isDaemonReachable, requestDaemon } from './client.js';
+
+export interface DaemonRuntimeInfo {
+  startedAt: string;
+  uiBaseUrl: string | null;
+  uiPort: number | null;
+  agents: number;
+  sessions: number;
+  taskGroups: number;
+  providerBindings: number;
+  onlineBindings: number;
+}
+
+export interface DaemonStartResult {
+  pid: number;
+  alreadyRunning: boolean;
+  runtime: DaemonRuntimeInfo | null;
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -48,12 +65,28 @@ export function removeDaemonSocket(): void {
   } catch {}
 }
 
-export async function startDaemonBackground(): Promise<number> {
+export async function getDaemonRuntimeInfo(): Promise<DaemonRuntimeInfo | null> {
+  if (!await isDaemonReachable()) {
+    return null;
+  }
+
+  try {
+    return await requestDaemon<DaemonRuntimeInfo>('daemon.status');
+  } catch {
+    return null;
+  }
+}
+
+export async function startDaemonBackgroundWithInfo(): Promise<DaemonStartResult> {
   ensureDaemonDirs();
 
   const existingPid = readDaemonPid();
   if (existingPid && isProcessAlive(existingPid) && await isDaemonReachable()) {
-    return existingPid;
+    return {
+      pid: existingPid,
+      alreadyRunning: true,
+      runtime: await getDaemonRuntimeInfo(),
+    };
   }
 
   if (existingPid && !isProcessAlive(existingPid)) {
@@ -73,16 +106,34 @@ export async function startDaemonBackground(): Promise<number> {
 
   writeDaemonPid(child.pid!);
   await waitForDaemonReady();
-  return child.pid!;
+  return {
+    pid: child.pid!,
+    alreadyRunning: false,
+    runtime: await getDaemonRuntimeInfo(),
+  };
+}
+
+export async function startDaemonBackground(): Promise<number> {
+  const result = await startDaemonBackgroundWithInfo();
+  return result.pid;
+}
+
+export async function ensureDaemonRunningWithInfo(): Promise<DaemonStartResult> {
+  const pid = readDaemonPid();
+  if (pid && isProcessAlive(pid) && await isDaemonReachable()) {
+    return {
+      pid,
+      alreadyRunning: true,
+      runtime: await getDaemonRuntimeInfo(),
+    };
+  }
+
+  return startDaemonBackgroundWithInfo();
 }
 
 export async function ensureDaemonRunning(): Promise<number> {
-  const pid = readDaemonPid();
-  if (pid && isProcessAlive(pid) && await isDaemonReachable()) {
-    return pid;
-  }
-
-  return startDaemonBackground();
+  const result = await ensureDaemonRunningWithInfo();
+  return result.pid;
 }
 
 export async function stopDaemonBackground(): Promise<boolean> {
