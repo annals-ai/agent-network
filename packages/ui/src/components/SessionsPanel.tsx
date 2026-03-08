@@ -1,4 +1,12 @@
 import type { AgentRecord, SessionRecord, SessionStatus, TaskRecord } from '../api';
+import { Funnel, History, Layers3 } from 'lucide-react';
+
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { cn } from '@/lib/utils';
 
 interface SessionFilters {
   agentId: string;
@@ -41,106 +49,132 @@ export function SessionsPanel({
   onSelectSession,
 }: SessionsPanelProps) {
   return (
-    <section id="sessions" className="panel-section">
-      <div className="panel-heading">
-        <div>
-          <p className="panel-kicker">Sessions</p>
-          <h2>Live desk</h2>
-        </div>
-        <p className="panel-note">Filter by agent, task group, or lifecycle state.</p>
-      </div>
+    <Card id="sessions">
+      <CardHeader>
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Sessions</p>
+        <CardTitle>Live desk</CardTitle>
+        <CardDescription>Filter by agent, task group, or lifecycle state without losing your selected session.</CardDescription>
+      </CardHeader>
 
-      <div className="filter-grid">
-        <label className="field">
-          <span>Agent</span>
-          <select
-            value={filters.agentId}
-            onChange={(event) => onFiltersChange({ ...filters, agentId: event.target.value })}
-          >
-            <option value="all">All agents</option>
-            {agents.map((agent) => (
-              <option key={agent.id} value={agent.id}>
-                {agent.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <CardContent className="space-y-5">
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="grid gap-2">
+            <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
+              <Funnel className="size-3.5" />
+              Agent
+            </span>
+            <Select value={filters.agentId} onValueChange={(agentId) => onFiltersChange({ ...filters, agentId })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All agents" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All agents</SelectItem>
+                {agents.map((agent) => (
+                  <SelectItem key={agent.id} value={agent.id}>
+                    {agent.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
 
-        <label className="field">
-          <span>Task group</span>
-          <select
-            value={filters.taskGroupId}
-            onChange={(event) => onFiltersChange({ ...filters, taskGroupId: event.target.value })}
-          >
-            <option value="all">All task groups</option>
-            {tasks.map((task) => (
-              <option key={task.id} value={task.id}>
-                {task.title}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Status</span>
-          <select
-            value={filters.status}
-            onChange={(event) => onFiltersChange({ ...filters, status: event.target.value as SessionFilters['status'] })}
-          >
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="stack-list">
-        {sessions.length === 0 ? (
-          <div className="empty-state">
-            <strong>No sessions match the current filters.</strong>
-            <p>Try another agent, task group, or status slice.</p>
-          </div>
-        ) : (
-          sessions.map((session) => (
-            <button
-              key={session.id}
-              type="button"
-              className={`stack-item ${selectedSessionId === session.id ? 'is-active' : ''}`}
-              onClick={() => onSelectSession(session.id)}
+          <label className="grid gap-2">
+            <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
+              <Layers3 className="size-3.5" />
+              Task group
+            </span>
+            <Select
+              value={filters.taskGroupId}
+              onValueChange={(taskGroupId) => onFiltersChange({ ...filters, taskGroupId })}
             >
-              <div className="stack-header">
-                <div>
-                  <strong>{session.title ?? 'Untitled session'}</strong>
-                  <span>{session.agent?.name ?? session.agentId}</span>
-                </div>
-                <span className={`badge badge-status badge-${session.status}`}>{session.status}</span>
-              </div>
+              <SelectTrigger>
+                <SelectValue placeholder="All task groups" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All task groups</SelectItem>
+                {tasks.map((task) => (
+                  <SelectItem key={task.id} value={task.id}>
+                    {task.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
 
-              <p className="stack-copy">
-                {session.summary ?? `${session.origin} · ${session.principalType}`}
-              </p>
+          <label className="grid gap-2">
+            <span className="text-muted-foreground flex items-center gap-2 text-xs font-medium uppercase tracking-[0.16em]">
+              <History className="size-3.5" />
+              Status
+            </span>
+            <Select
+              value={filters.status}
+              onValueChange={(status) => onFiltersChange({ ...filters, status: status as SessionFilters['status'] })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        </div>
 
-              <div className="stack-meta">
-                <span>{formatTimestamp(session.lastActiveAt)}</span>
-                <span>{session.taskGroupId ? 'Task linked' : 'Standalone'}</span>
-                <span>{session.tags.length} tags</span>
-              </div>
+        {sessions.length === 0 ? (
+          <EmptyState
+            title="No sessions match the current filters"
+            description="Try another agent, task group, or lifecycle slice to reveal matching sessions."
+          />
+        ) : (
+          <div className="space-y-3">
+            {sessions.map((session) => {
+              const active = selectedSessionId === session.id;
 
-              {session.tags.length > 0 ? (
-                <div className="tag-row">
-                  {session.tags.map((tag) => (
-                    <span key={tag} className="tag-chip">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </button>
-          ))
+              return (
+                <button
+                  key={session.id}
+                  type="button"
+                  className={cn(
+                    'w-full rounded-xl border p-4 text-left transition-colors',
+                    active ? 'border-primary bg-accent/40 shadow-sm' : 'bg-background hover:bg-accent/35',
+                  )}
+                  onClick={() => onSelectSession(session.id)}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-medium">{session.title ?? 'Untitled session'}</p>
+                      <p className="text-muted-foreground text-sm">{session.agent?.name ?? session.agentId}</p>
+                    </div>
+                    <StatusBadge value={session.status} />
+                  </div>
+
+                  <p className="mt-3 text-sm leading-6">{session.summary ?? `${session.origin} · ${session.principalType}`}</p>
+
+                  <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 text-xs">
+                    <span>{formatTimestamp(session.lastActiveAt)}</span>
+                    <span>{session.taskGroupId ? 'Task linked' : 'Standalone'}</span>
+                    <span>{session.tags.length} tags</span>
+                  </div>
+
+                  {session.tags.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {session.tags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="rounded-full font-normal">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

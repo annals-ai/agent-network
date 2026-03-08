@@ -1,4 +1,9 @@
 import type { ProviderRecord } from '../api';
+import { ExternalLink, Globe2, PlugZap } from 'lucide-react';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 function visibleUrls(config: Record<string, unknown>): Array<{ key: string; value: string }> {
   return Object.entries(config)
@@ -9,55 +14,76 @@ function visibleUrls(config: Record<string, unknown>): Array<{ key: string; valu
 
 export function ExposurePanel({ providers }: { providers: ProviderRecord[] }) {
   return (
-    <section id="exposure" className="panel-section">
-      <div className="panel-heading">
-        <div>
-          <p className="panel-kicker">Exposure</p>
-          <h2>Provider bindings</h2>
-        </div>
-        <p className="panel-note">Gateway reachability and remote ids stay visible without leaving local history.</p>
-      </div>
+    <Card id="exposure">
+      <CardHeader>
+        <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Exposure</p>
+        <CardTitle>Provider bindings</CardTitle>
+        <CardDescription>Gateway reachability, remote ids, and advertised endpoints stay visible alongside local history.</CardDescription>
+      </CardHeader>
 
-      <div className="stack-list">
+      <CardContent>
         {providers.length === 0 ? (
-          <div className="empty-state">
-            <strong>No providers exposed.</strong>
-            <p>Bindings such as Agents Hot and generic A2A will appear here after registration.</p>
-          </div>
+          <EmptyState
+            title="No providers exposed"
+            description="Bindings such as Agents Hot and generic A2A will appear here after registration."
+            icon={<Globe2 className="size-5" />}
+          />
         ) : (
-          providers.map((provider) => (
-            <article key={provider.id} className="stack-item">
-              <div className="stack-header">
-                <div>
-                  <strong>{provider.provider}</strong>
-                  <span>{provider.agent?.name ?? provider.agentId}</span>
-                </div>
-                <span className={`badge badge-status badge-${provider.status}`}>{provider.status}</span>
-              </div>
+          <div className="space-y-3">
+            {providers.map((provider) => {
+              const urls = visibleUrls(provider.config);
 
-              <div className="stack-meta">
-                <span>{provider.remoteSlug ?? provider.remoteAgentId ?? 'Local only'}</span>
-                <span>{provider.lastSyncedAt ? new Date(provider.lastSyncedAt).toLocaleString() : 'Never synced'}</span>
-              </div>
+              return (
+                <article key={provider.id} className="rounded-xl border bg-background p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="font-medium">{provider.provider}</p>
+                      <p className="text-muted-foreground text-sm">{provider.agent?.name ?? provider.agentId}</p>
+                    </div>
+                    <StatusBadge value={provider.status} />
+                  </div>
 
-              {visibleUrls(provider.config).length > 0 ? (
-                <ul className="url-list">
-                  {visibleUrls(provider.config).map((entry) => (
-                    <li key={entry.key}>
-                      <span>{entry.key}</span>
-                      <a href={entry.value} target="_blank" rel="noreferrer">
-                        {entry.value}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mini-copy">No URL endpoints advertised in this binding config.</p>
-              )}
-            </article>
-          ))
+                  <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 text-xs">
+                    <span className="inline-flex items-center gap-1.5">
+                      <PlugZap className="size-3.5" />
+                      {provider.remoteSlug ?? provider.remoteAgentId ?? 'Local only'}
+                    </span>
+                    <span>
+                      {provider.lastSyncedAt ? new Date(provider.lastSyncedAt).toLocaleString() : 'Never synced'}
+                    </span>
+                  </div>
+
+                  {urls.length > 0 ? (
+                    <div className="mt-4 space-y-2">
+                      {urls.map((entry) => (
+                        <div
+                          key={entry.key}
+                          className="flex flex-col gap-1 rounded-lg border bg-muted/25 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between"
+                        >
+                          <span className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">
+                            {entry.key}
+                          </span>
+                          <a
+                            href={entry.value}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 break-all hover:underline"
+                          >
+                            {entry.value}
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground mt-4 text-sm">No URL endpoints advertised in this binding config.</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

@@ -17,6 +17,7 @@ import { OverviewPanel } from './components/OverviewPanel';
 import { SessionsPanel } from './components/SessionsPanel';
 import { TasksPanel } from './components/TasksPanel';
 import { TranscriptPanel } from './components/TranscriptPanel';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface SessionFilters {
   agentId: string;
@@ -177,34 +178,30 @@ export default function App() {
       }}
     >
       {error ? (
-        <section className="panel-section empty-error">
-          <div className="panel-heading">
-            <div>
-              <p className="panel-kicker">Alert</p>
-              <h2>Snapshot refresh failed</h2>
-            </div>
-          </div>
-          <p>{error}</p>
-        </section>
+        <Card className="border-destructive/30">
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Alert</p>
+            <CardTitle>Snapshot refresh failed</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+        </Card>
       ) : null}
 
       {loading && !dashboard ? (
-        <section className="panel-section">
-          <div className="panel-heading">
-            <div>
-              <p className="panel-kicker">Loading</p>
-              <h2>Collecting local daemon state</h2>
-            </div>
-          </div>
-          <p className="panel-note">Fetching agents, sessions, tasks, providers, and recent logs.</p>
-        </section>
+        <Card>
+          <CardHeader>
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-[0.16em]">Loading</p>
+            <CardTitle>Collecting local daemon state</CardTitle>
+            <CardDescription>Fetching agents, sessions, tasks, providers, and recent logs.</CardDescription>
+          </CardHeader>
+        </Card>
       ) : null}
 
       {dashboard ? (
         <>
           <OverviewPanel status={dashboard.status} />
 
-          <div className="panel-grid panel-grid-two">
+          <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
             <AgentsPanel
               agents={dashboard.agents}
               selectedAgentId={filters.agentId}
@@ -224,7 +221,7 @@ export default function App() {
             />
           </div>
 
-          <div className="panel-grid panel-grid-two transcript-layout">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
             <TranscriptPanel
               session={selectedSession}
               messages={messages}
@@ -247,7 +244,7 @@ export default function App() {
             <TasksPanel tasks={dashboard.tasks} />
           </div>
 
-          <div className="panel-grid panel-grid-two">
+          <div className="grid gap-6 xl:grid-cols-2">
             <ExposurePanel providers={dashboard.providers} />
             <LogsPanel logs={dashboard.logs} path={dashboard.logPath} />
           </div>
