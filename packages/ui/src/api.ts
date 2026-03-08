@@ -154,6 +154,11 @@ export interface DashboardData {
   logPath: string;
 }
 
+export interface LogStreamSnapshot {
+  items: string[];
+  path: string;
+}
+
 export class UiApiError extends Error {
   status: number;
 
@@ -180,6 +185,22 @@ async function postJson<T>(path: string, body: Record<string, unknown>): Promise
     },
     body: JSON.stringify(body),
   });
+}
+
+function subscribeEventStream<T>(path: string, onMessage: (payload: T) => void): () => void {
+  const source = new EventSource(path);
+
+  source.onmessage = (event) => {
+    onMessage(JSON.parse(event.data) as T);
+  };
+
+  source.onerror = () => {
+    source.close();
+  };
+
+  return () => {
+    source.close();
+  };
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -221,6 +242,10 @@ export async function createTaskGroup(input: TaskMutationInput): Promise<TaskRec
 export async function archiveTaskGroup(taskGroupId: string): Promise<TaskRecord> {
   const response = await postJson<{ taskGroup: TaskRecord }>(`/api/tasks/${taskGroupId}/archive`, {});
   return response.taskGroup;
+}
+
+export function subscribeLogs(onMessage: (snapshot: LogStreamSnapshot) => void): () => void {
+  return subscribeEventStream<LogStreamSnapshot>('/api/logs/stream?lines=120', onMessage);
 }
 
 export async function stopDaemon(): Promise<DaemonActionResponse> {

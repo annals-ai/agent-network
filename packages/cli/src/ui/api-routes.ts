@@ -30,6 +30,19 @@ function writeJson(response: Parameters<UiHttpRequestHandler>[0]['response'], st
   response.end(JSON.stringify(payload));
 }
 
+function writeSseHeaders(response: Parameters<UiHttpRequestHandler>[0]['response']): void {
+  response.statusCode = 200;
+  response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  response.setHeader('Cache-Control', 'no-cache, no-transform');
+  response.setHeader('Connection', 'keep-alive');
+  response.setHeader('X-Accel-Buffering', 'no');
+  response.flushHeaders?.();
+}
+
+function writeSseEvent(response: Parameters<UiHttpRequestHandler>[0]['response'], payload: unknown): void {
+  response.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
 function splitPath(pathname: string): string[] {
   return pathname.split('/').filter(Boolean);
 }
@@ -198,6 +211,78 @@ async function buildDashboardSnapshot(
     logs: readLogTail(logPath, lines),
     logPath,
   };
+}
+
+function streamSnapshot<T>(
+  context: Pick<Parameters<UiHttpRequestHandler>[0], 'request' | 'response'>,
+  readSnapshot: () => T,
+  hasChanged: (current: T, next: T) => boolean,
+  intervalMs = 1_000,
+): void {
+  const { request, response } = context;
+  let closed = false;
+  let current = readSnapshot();
+
+  const cleanup = () => {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    clearInterval(poller);
+    clearInterval(heartbeat);
+    request.off('close', cleanup);
+    response.off('close', cleanup);
+    response.off('error', cleanup);
+    if (!response.writableEnded) {
+      response.end();
+    }
+  };
+
+  writeSseHeaders(response);
+  writeSseEvent(response, current);
+
+  const poller = setInterval(() => {
+    if (closed) {
+      return;
+    }
+
+    const next = readSnapshot();
+    if (!hasChanged(current, next)) {
+      return;
+    }
+
+    current = next;
+    writeSseEvent(response, next);
+  }, intervalMs);
+
+  const heartbeat = setInterval(() => {
+    if (!closed) {
+      response.write(': keepalive\n\n');
+    }
+  }, 15_000);
+
+  request.on('close', cleanup);
+  response.on('close', cleanup);
+  response.on('error', cleanup);
+}
+
+function readLogSnapshot(options: UiApiRoutesOptions, lines: number): { items: string[]; path: string } {
+  const logPath = resolveLogPath(options);
+  return {
+    items: readLogTail(logPath, lines),
+    path: logPath,
+  };
+}
+
+function haveLogSnapshotsChanged(
+  current: { items: string[]; path: string },
+  next: { items: string[]; path: string },
+): boolean {
+  if (current.path !== next.path || current.items.length !== next.items.length) {
+    return true;
+  }
+
+  return current.items.some((line, index) => line !== next.items[index]);
 }
 
 export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHandler {
@@ -583,11 +668,20 @@ export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHa
         return true;
       }
 
+      if (method === 'GET' && segments.length === 3 && segments[1] === 'logs' && segments[2] === 'stream') {
+        streamSnapshot(
+          { request, response },
+          () => readLogSnapshot(options, clampLineCount(searchParams.get('lines'))),
+          haveLogSnapshotsChanged,
+        );
+        return true;
+      }
+
       if (segments.length === 2 && segments[1] === 'logs') {
-        const logPath = resolveLogPath(options);
+        const logSnapshot = readLogSnapshot(options, clampLineCount(searchParams.get('lines')));
         writeJson(response, 200, {
-          items: readLogTail(logPath, clampLineCount(searchParams.get('lines'))),
-          path: logPath,
+          items: logSnapshot.items,
+          path: logSnapshot.path,
         });
         return true;
       }

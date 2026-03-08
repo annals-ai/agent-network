@@ -12,6 +12,7 @@ import {
   restartDaemon,
   sendLocalChatTurn,
   stopSession,
+  subscribeLogs,
   stopDaemon,
   unexposeAgent,
   updateAgent,
@@ -85,6 +86,8 @@ export default function App() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [liveLogs, setLiveLogs] = useState<string[]>([]);
+  const [liveLogPath, setLiveLogPath] = useState<string | null>(null);
   const [composerMessage, setComposerMessage] = useState('');
   const [composerAgentId, setComposerAgentId] = useState('');
   const [composerTaskGroupId, setComposerTaskGroupId] = useState('none');
@@ -155,6 +158,15 @@ export default function App() {
   }, [daemonActionState, selectedSessionId]);
 
   useEffect(() => {
+    if (!dashboard) {
+      return;
+    }
+
+    setLiveLogs(dashboard.logs);
+    setLiveLogPath(dashboard.logPath);
+  }, [dashboard]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -209,6 +221,17 @@ export default function App() {
         setMessagesLoading(false);
       });
   }, [selectedSessionId]);
+
+  useEffect(() => {
+    if (activeTab !== 'logs' || typeof EventSource === 'undefined') {
+      return;
+    }
+
+    return subscribeLogs((snapshot) => {
+      setLiveLogs(snapshot.items);
+      setLiveLogPath(snapshot.path);
+    });
+  }, [activeTab]);
 
   const selectedSession = filteredSessions.find((session) => session.id === selectedSessionId) ?? null;
   const draftAgentId = selectedSession
@@ -518,7 +541,7 @@ export default function App() {
           </TabsContent>
 
           <TabsContent value="logs" className="mt-0">
-            <LogsPanel logs={dashboard.logs} path={dashboard.logPath} />
+            <LogsPanel logs={liveLogs} path={liveLogPath ?? dashboard.logPath} />
           </TabsContent>
         </>
       ) : null}

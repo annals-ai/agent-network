@@ -26,6 +26,7 @@ import { removeDaemonPid, scheduleDaemonRestartFromCurrentProcess } from './proc
 
 interface AgentMeshDaemonServerOptions {
   dbPath?: string;
+  logPath?: string;
   uiHost?: string;
   uiPort?: number;
   uiControlHooks?: {
@@ -63,6 +64,7 @@ export class AgentMeshDaemonServer {
   private readonly dbPath: string;
   private readonly preferredUiHost: string;
   private readonly preferredUiPort: number;
+  private readonly logPath: string | null;
   private readonly uiControlHooks: AgentMeshDaemonServerOptions['uiControlHooks'];
   private socketServer: NetServer | null = null;
   private socketPath: string | null = null;
@@ -85,6 +87,7 @@ export class AgentMeshDaemonServer {
 
   constructor(options: AgentMeshDaemonServerOptions = {}) {
     this.dbPath = options.dbPath ?? getDaemonDbPath();
+    this.logPath = options.logPath ?? null;
     this.uiControlHooks = options.uiControlHooks;
     this.store = new DaemonStore(this.dbPath);
     this.preferredUiHost = options.uiHost ?? getDaemonUiHost();
@@ -158,6 +161,7 @@ export class AgentMeshDaemonServer {
         startedAt: this.startedAt,
         getUiBaseUrl: () => this.uiBaseUrl,
         getUiPort: () => this.uiPort,
+        getLogPath: this.logPath ? () => this.logPath! : undefined,
         requestStop: () => this.requestUiStop(),
         requestRestart: () => this.requestUiRestart(),
       }),
