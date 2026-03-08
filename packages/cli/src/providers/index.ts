@@ -7,6 +7,7 @@ import { loadToken } from '../platform/auth.js';
 import { BridgeWSClient } from '../platform/ws-client.js';
 import { log } from '../utils/logger.js';
 import { DaemonBridgeAdapter } from './daemon-bridge-adapter.js';
+import { GenericA2AProvider } from './generic-a2a.js';
 
 const DEFAULT_BRIDGE_URL = 'wss://bridge.agents.hot/ws';
 
@@ -227,44 +228,6 @@ class AgentsHotProvider implements ProviderRuntime {
       config: normalizeProviderConfig(binding.config),
       lastSyncedAt: new Date().toISOString(),
     });
-  }
-}
-
-class GenericA2AProvider implements ProviderRuntime {
-  readonly name = 'generic-a2a';
-
-  async registerAgent(input: { agent: DaemonAgent; binding: ProviderBinding | null }): Promise<ProviderExposureResult> {
-    return {
-      remoteAgentId: input.binding?.remoteAgentId ?? null,
-      remoteSlug: input.binding?.remoteSlug ?? input.agent.slug,
-      status: 'configured',
-      config: input.binding?.config ?? {},
-      lastSyncedAt: new Date().toISOString(),
-    };
-  }
-
-  async updateAgent(input: { agent: DaemonAgent; binding: ProviderBinding }): Promise<ProviderExposureResult> {
-    return {
-      remoteAgentId: input.binding.remoteAgentId,
-      remoteSlug: input.binding.remoteSlug ?? input.agent.slug,
-      status: 'configured',
-      config: input.binding.config,
-      lastSyncedAt: new Date().toISOString(),
-    };
-  }
-
-  async unregisterAgent(): Promise<void> {}
-  async startIngress(): Promise<void> {}
-  async stopIngress(): Promise<void> {}
-
-  async deliverInboundRequest(): Promise<never> {
-    throw new Error('Generic A2A inbound delivery is not wired into the daemon yet.');
-  }
-
-  async syncSessionState(): Promise<void> {}
-
-  async streamResponse(): Promise<never> {
-    throw new Error('Generic A2A streaming ingress is not wired into the daemon yet.');
   }
 }
 

@@ -22,6 +22,7 @@ agent-mesh daemon start
 agent-mesh agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
 agent-mesh chat "Code Reviewer" "Review this repo"
 agent-mesh agent expose "Code Reviewer" --provider agents-hot
+agent-mesh agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## Core Model
@@ -47,8 +48,8 @@ agent-mesh agent list
 agent-mesh agent show <ref>
 agent-mesh agent update <ref>
 agent-mesh agent remove <ref>
-agent-mesh agent expose <ref> --provider agents-hot
-agent-mesh agent unexpose <ref> --provider agents-hot
+agent-mesh agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+agent-mesh agent unexpose <ref> --provider agents-hot|generic-a2a
 
 agent-mesh task create --title "..."
 agent-mesh task list
@@ -78,6 +79,21 @@ Sandbox is now explicit and optional.
 - With sandbox: Agent Mesh creates an isolated workspace and enables file-oriented flows
 
 Session ownership does not depend on sandbox mode.
+
+## Provider Examples
+
+```bash
+# Agents Hot ingress
+agent-mesh agent expose "Code Reviewer" --provider agents-hot
+
+# Generic A2A ingress on a local HTTP port
+agent-mesh agent expose "Code Reviewer" \
+  --provider generic-a2a \
+  --config-json '{"port":4123,"bearerToken":"replace-me"}'
+
+# Inspect generated URLs
+agent-mesh agent show "Code Reviewer" --json
+```
 
 ## Development
 

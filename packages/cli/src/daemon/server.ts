@@ -70,6 +70,7 @@ export class AgentMeshDaemonServer {
     });
 
     log.info(`agent-mesh daemon listening on ${socketPath}`);
+    void this.restoreProviderIngresses();
   }
 
   private async handleLine(socket: Socket, line: string): Promise<void> {
@@ -393,6 +394,30 @@ export class AgentMeshDaemonServer {
 
       default:
         throw new Error(`Unknown daemon method: ${request.method}`);
+    }
+  }
+
+  private async restoreProviderIngresses(): Promise<void> {
+    for (const binding of this.store.listProviderBindings()) {
+      if (binding.status === 'inactive') continue;
+      const agent = this.store.getAgentById(binding.agentId);
+      if (!agent) continue;
+
+      try {
+        const provider = getProvider(binding.provider);
+        await provider.startIngress({ agent, binding, store: this.store, runtime: this.runtime });
+      } catch (error) {
+        this.store.upsertProviderBinding({
+          agentId: binding.agentId,
+          provider: binding.provider,
+          remoteAgentId: binding.remoteAgentId,
+          remoteSlug: binding.remoteSlug,
+          status: 'error',
+          config: binding.config,
+          lastSyncedAt: new Date().toISOString(),
+        });
+        log.warn(`Failed to restore ${binding.provider} ingress for ${agent.slug}: ${(error as Error).message}`);
+      }
     }
   }
 }

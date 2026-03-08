@@ -22,6 +22,7 @@ agent-mesh daemon start
 agent-mesh agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
 agent-mesh chat "Code Reviewer" "Review this repo"
 agent-mesh agent expose "Code Reviewer" --provider agents-hot
+agent-mesh agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## 核心模型
@@ -47,8 +48,8 @@ agent-mesh agent list
 agent-mesh agent show <ref>
 agent-mesh agent update <ref>
 agent-mesh agent remove <ref>
-agent-mesh agent expose <ref> --provider agents-hot
-agent-mesh agent unexpose <ref> --provider agents-hot
+agent-mesh agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+agent-mesh agent unexpose <ref> --provider agents-hot|generic-a2a
 
 agent-mesh task create --title "..."
 agent-mesh task list
@@ -78,6 +79,21 @@ agent-mesh profile ...
 - 开沙箱：创建隔离 workspace，并启用文件相关流程
 
 是否开启沙箱不会改变 session 的归属关系。
+
+## Provider 示例
+
+```bash
+# 暴露到 Agents Hot
+agent-mesh agent expose "Code Reviewer" --provider agents-hot
+
+# 在本机 HTTP 端口上暴露标准 Generic A2A 入口
+agent-mesh agent expose "Code Reviewer" \
+  --provider generic-a2a \
+  --config-json '{"port":4123,"bearerToken":"replace-me"}'
+
+# 查看生成出来的 card / jsonrpc / health URL
+agent-mesh agent show "Code Reviewer" --json
+```
 
 ## 开发
 
