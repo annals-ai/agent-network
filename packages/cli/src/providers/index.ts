@@ -35,13 +35,15 @@ interface AgentsHotIngressRuntime {
   manager: BridgeManager;
 }
 
-function buildPlatformPayload(agent: DaemonAgent): Record<string, unknown> {
+export function buildPlatformPayload(agent: DaemonAgent): Record<string, unknown> {
   return {
     name: agent.name,
+    slug: agent.slug,
     description: agent.description || undefined,
     agent_type: agent.runtimeType,
-    visibility: agent.visibility,
+    visibility: agent.visibility === 'unlisted' ? 'private' : agent.visibility,
     capabilities: agent.capabilities,
+    is_published: true,
   };
 }
 
