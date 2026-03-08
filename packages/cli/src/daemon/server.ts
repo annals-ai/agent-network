@@ -13,6 +13,7 @@ import { DaemonStore } from './store.js';
 import type { DaemonEnvelope, DaemonRequest } from './protocol.js';
 import { getProvider, shutdownProviders } from '../providers/index.js';
 import { log } from '../utils/logger.js';
+import { createUiApiHandler } from '../ui/api-routes.js';
 import { startUiHttpServer, type UiHttpServerHandle } from '../ui/http-server.js';
 
 interface AgentMeshDaemonServerOptions {
@@ -122,6 +123,13 @@ export class AgentMeshDaemonServer {
     this.uiServer = await startUiHttpServer({
       host: this.preferredUiHost,
       preferredPort: this.preferredUiPort,
+      handleRequest: createUiApiHandler({
+        store: this.store,
+        runtime: this.runtime,
+        startedAt: this.startedAt,
+        getUiBaseUrl: () => this.uiBaseUrl,
+        getUiPort: () => this.uiPort,
+      }),
     });
     this.uiBaseUrl = this.uiServer.baseUrl;
     this.uiPort = this.uiServer.port;

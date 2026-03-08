@@ -547,6 +547,27 @@ export class DaemonStore {
     return rows.map((row) => this.mapSession(row));
   }
 
+  getSessionCountsByAgent(): Record<string, number> {
+    const rows = this.db.prepare(`
+      SELECT agent_id, COUNT(*) AS count
+      FROM sessions
+      GROUP BY agent_id
+    `).all() as Array<{ agent_id: string; count: number }>;
+
+    return Object.fromEntries(rows.map((row) => [row.agent_id, Number(row.count)]));
+  }
+
+  getSessionCountsByTaskGroup(): Record<string, number> {
+    const rows = this.db.prepare(`
+      SELECT task_group_id, COUNT(*) AS count
+      FROM sessions
+      WHERE task_group_id IS NOT NULL
+      GROUP BY task_group_id
+    `).all() as Array<{ task_group_id: string; count: number }>;
+
+    return Object.fromEntries(rows.map((row) => [row.task_group_id, Number(row.count)]));
+  }
+
   updateSession(sessionId: string, input: UpdateSessionInput): SessionRecord {
     const current = this.getSession(sessionId);
     if (!current) throw new Error(`Session not found: ${sessionId}`);

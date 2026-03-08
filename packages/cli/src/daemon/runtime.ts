@@ -213,6 +213,29 @@ export class DaemonRuntime {
     return next;
   }
 
+  async getUiStatusSnapshot(): Promise<{
+    activeExecutions: number;
+    managedSessions: number;
+    queue: {
+      active: number;
+      queued: number;
+      config: {
+        maxActiveRequests: number;
+        queueWaitTimeoutMs: number;
+        queueMaxLength: number;
+      };
+    };
+  }> {
+    const queue = await this.runtimeQueue.snapshot();
+    const activeExecutions = Array.from(this.managedSessions.values()).filter((managed) => managed.active).length;
+
+    return {
+      activeExecutions,
+      managedSessions: this.managedSessions.size,
+      queue,
+    };
+  }
+
   async syncSessionToPlatform(sessionId: string): Promise<void> {
     const session = this.store.getSession(sessionId);
     if (!session || session.principalType !== 'owner_local') {
