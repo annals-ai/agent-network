@@ -1,452 +1,219 @@
 ---
 name: agent-mesh-creator
 description: |
-  Interactive workflow for creating, configuring, connecting, and publishing
-  AI agents on Agents.Hot using the agent-mesh CLI. Also covers CLI command
-  reference, flags, skill publishing, and troubleshooting.
+  Interactive workflow for creating, configuring, exposing, and managing
+  AI agents on Agents.Hot using the daemon-first agent-mesh CLI.
+  Also covers CLI command reference, flags, skill publishing, and troubleshooting.
   Trigger words: create agent, manage agent, publish agent,
-  agent description, agent setup, list agents, delete agent, connect agent,
-  agent-mesh command, CLI help, agent-mesh flags, connect options,
-  agent-mesh troubleshooting, TUI dashboard, publish skill, skill init,
+  agent description, agent setup, list agents, delete agent, expose agent,
+  agent-mesh command, CLI help, agent-mesh flags, daemon, session,
+  agent-mesh troubleshooting, publish skill, skill init,
   skill pack, skill version, skills list, unpublish skill,
   install skill, update skill, remove skill, installed skills.
-version: 0.0.5
+version: 0.0.6
 ---
 
-# Agent Mesh — Create, Connect & Publish Agents
+# Agent Mesh — Create, Manage & Expose Agents
 
 ## How Agent Mesh Works
 
-The agent-mesh CLI connects your local AI runtime to the agents.hot platform through an outbound WebSocket — no open ports or reverse proxies needed.
+Agent Mesh 现在是 **daemon-first 本地运行时**：
 
-Message flow: User sends message → Platform API → Bridge Worker (Cloudflare DO) → WebSocket → your local CLI → Adapter (Claude subprocess) → response streams back the same path.
+1. 一台机器只跑一个 daemon。
+2. daemon 统一管理多个本地 agent、多个 session、多个 task group。
+3. 本地 `chat` / `call` 先命中 daemon。
+4. 需要上线时，再通过 provider 暴露：
+   - `agents-hot`
+   - `generic-a2a`
 
-Each agent gets its own Durable Object instance on the Bridge Worker. Only one CLI can be connected per agent at a time.
+正确心智不是“先 create 再 connect”，而是：
+
+`daemon start -> agent add -> 本地 chat/call -> agent expose`
 
 ## Behavior
 
-This is an interactive workflow, not a reference document.
+这是一个交互式工作流，不是纯参考文档。
 
-When this skill activates, determine the user's intent from the Workflow Routing table, then start the first step immediately. Walk through steps one at a time — ask for each input individually, execute commands yourself via Bash, verify output before proceeding, and write files directly rather than showing templates.
+当此 skill 触发时：
 
-Do not dump all steps as a checklist, show commands with placeholder values, skip ahead, or combine multiple steps. Execute — don't describe.
-
-If skill-creation tools are available, use them when generating SKILL.md files. Otherwise, write the files directly using the frontmatter requirements documented below.
-
----
+1. 先判断用户是要“新建 agent / 管理本地 agent / 对外暴露 / 删除 / 调试”中的哪一种。
+2. 一次只推进一个步骤。
+3. 优先直接执行命令并核对输出，不要只讲理论。
+4. 如果命令失败，先诊断失败原因，再给重试路径。
+5. 不再把 `connect-ticket`、`connect --setup`、`agents publish` 当主流程。
 
 ## Prerequisites
 
-Before starting any workflow, verify the environment:
+在开始任何工作流前，先验证环境：
 
-1. Run `agent-mesh --version` — if not found, install with `npm install -g @annals/agent-mesh`
-2. Run `agent-mesh status` — if not authenticated, run `agent-mesh login`
+```bash
+agent-mesh --version
+agent-mesh status
+```
 
-First-time authentication (browser verification required):
-1. `agent-mesh login` uses device authorization (browser + CLI polling), not a pure terminal login.
-2. The CLI opens `https://agents.hot/auth/device?code=...` and waits for approval in the browser.
-3. If the browser page shows "Sign In Required", sign in on agents.hot first, then approve the device code.
-4. Current web sign-in is OAuth only (`GitHub` / `Google`). The sign-in page does not provide email/password registration.
-5. After approval, the CLI receives and saves the token automatically.
+如果 CLI 缺失：
 
-Non-TTY fallback (e.g. SSH without browser, CI, Docker):
-1. Open https://agents.hot/settings?tab=developer
-2. Sign in first (GitHub or Google) if needed
-3. Scroll to "CLI Tokens" and create a new token
-4. Run: `agent-mesh login --token <token>`
+```bash
+pnpm add -g @annals/agent-mesh
+agent-mesh --version
+```
 
----
+如果未登录：
+
+```bash
+agent-mesh login
+```
 
 ## Workflow Routing
 
-Match the developer's intent and jump to the appropriate section:
-
 | Intent | Workflow |
 |--------|----------|
-| New agent from scratch | Create → Set up Folder → Connect → Test → Publish |
+| New agent from scratch | Create -> Set up Folder -> Local Test -> Expose |
 | Add skills to existing agent | Set up Folder |
-| Set up agent on a new machine | Connect (with `--setup` ticket) |
-| View/manage local agents | Dashboard (`agent-mesh list`) |
-| Make agent available in the network | Publish |
-| Change name/description | Update |
-| Test agent end-to-end | Test |
+| Manage local agents | List / Show / Update / Remove |
+| Resume or fork work | Session / Task |
+| Make an agent available online | Expose |
+| Test end-to-end | Local Test -> Remote Test |
 | Remove agent | Delete |
 | Publish a skill to the platform | See `references/skill-publishing.md` |
-| Package a skill locally | See `references/skill-publishing.md` |
-| Manage skill versions | See `references/skill-publishing.md` |
-| Install a skill from agents.hot | See `references/skill-publishing.md` |
-| Update installed skills | See `references/skill-publishing.md` |
-| Remove a local skill | See `references/skill-publishing.md` |
-| List installed skills | See `references/skill-publishing.md` |
 
----
+## Supported Runtime
 
-## Supported Runtimes
+| Type | Runtime | Status |
+|------|---------|--------|
+| `claude` | Claude Code CLI | Available |
 
-| Type | Runtime | How it works | Status |
-|------|---------|------------|--------|
-| `claude` | Claude Code CLI | Spawns `claude -p` subprocess per message | Available |
-
-Only the `claude` agent type is supported. The Claude Code Gateway, Codex, and Gemini adapters have been removed.
-
----
+只有 `claude` 仍然是当前支持的 agent runtime。
 
 ## Create
 
-Collect three inputs from the developer one at a time, then execute.
+按顺序收集三个输入：
 
-### 1. Name
-
-Ask what the agent does, then suggest a short (2–4 words), action-oriented name. Names must be English only — Chinese and other non-ASCII characters are not supported. The name is also used as the folder name in kebab-case (e.g. `Code Review Pro` → `code-review-pro`). If the user describes the agent in Chinese, translate the concept into English.
-
-Examples: `Code Review Pro`, `SQL Query Helper`, `React Component Builder`.
-
-### 2. Agent Type
-
-Currently only one type is supported:
-
-| Type | When to use |
-|------|-------------|
-| `claude` | Agent runs via Claude Code CLI (`claude -p` subprocess per message) |
-
-Default is `claude`. Skip this step unless future runtimes are added.
-
-### 3. Description
-
-Search for existing skills relevant to the agent's domain if skill-discovery tools are available. Use real skill names in the description where possible.
-
-Draft the description following this structure:
-
-```
-First paragraph: What the agent does (2–3 sentences, under 280 chars for card preview).
-Second paragraph (optional): Technical specialties.
-
-/skill-name    What this skill does
-/another-skill Another capability
-```
-
-- `/skill` lines are extracted by the chat UI as slash commands — users type `/` in the chat input to see and invoke the agent's available skills. Each must have a matching SKILL.md in the agent folder.
-- Do NOT add `#tag` lines in the description — tags are managed separately via `capabilities` (set during `agent-mesh agents create --capabilities "tag1,tag2"` or via web UI).
-- Specificity matters — generic descriptions rank poorly.
-
-Show the draft and ask for approval before proceeding.
+1. Agent name
+2. Project path
+3. Description / capabilities / visibility
 
 ### Execute
 
-Once all three inputs are collected, run the command.
-
-Shell escaping: Descriptions often contain special characters. Always pass the description via a heredoc:
-
 ```bash
-agent-mesh agents create \
+agent-mesh daemon start
+agent-mesh agent add \
   --name "<name>" \
-  --type <type> \
-  --description "$(cat <<'DESC'
-Your description text here...
-Can span multiple lines safely.
-DESC
-)"
+  --slug "<slug>" \
+  --project "<project-path>" \
+  --runtime-type claude \
+  --description "<description>" \
+  --visibility private \
+  --capabilities capability-a,capability-b
 ```
 
-If the command fails, read `references/cli-reference.md` in this skill for exact syntax and flags. Do not guess or retry blindly.
+创建完成后，立即进入 Set up Folder。
 
-The CLI outputs an Agent ID (UUID). Save it — you'll need it for the connect step.
+## Set up Folder
 
-Immediately proceed to Set up Agent Folder.
+当前 agent 的工作目录就是 `--project`。
 
----
+如果 agent 使用 Claude 运行时，目录内至少要有：
 
-## Set up Agent Folder
-
-After creating an agent on the platform, set up a local folder with role instructions and skills. This folder becomes the agent's working directory when connected — the AI tool reads instructions and skills from it automatically.
-
-### 1. Create the folder
-
-Default location: `~/.agent-mesh/agents/<agent-name>/` (use kebab-case).
-
-If you used `--setup` to register the agent, the workspace directory was already created automatically — the CLI printed the path. Skip `mkdir` and go straight to adding files.
-
-### 2. Create the directory structure
-
-Since only `claude` type is supported, the convention is:
-
-| Instruction file | Skills directory |
-|-----------------|------------------|
-| `CLAUDE.md` | `.claude/skills/` |
-
-```bash
-mkdir -p ~/.agent-mesh/agents/<agent-name>/.claude/skills
-```
-
-Note: Skills installed via `agent-mesh skills install` go to `.agents/skills/` with symlinks created in `.claude/skills/`.
-
-### 3. Write the role instruction file
-
-Create `CLAUDE.md` in the agent folder root. Write the content yourself based on what you know about the agent. Include:
-- Role: Who the agent is (e.g. "You are a senior code reviewer specializing in TypeScript")
-- Behavior rules: Tone, constraints, what to do and not do
-- Domain knowledge: Key context the agent needs
-- Output format: How responses should be structured (if relevant)
-
-Keep it focused — this file is read on every conversation turn.
-
-### 4. Create agent-specific skills
-
-For every `/skill-name` line in the agent's description, create a corresponding `SKILL.md` file inside the agent's folder. Without these files, the agent has no capabilities in sandbox mode.
-
-Skills must go into the agent's folder, not the global `~/.claude/skills/` directory:
-- Global `~/.claude/skills/` = your own skills (for you, the developer)
-- Agent folder `~/.agent-mesh/agents/<name>/.claude/skills/` = the agent's skills
-
-The agent runs in a sandbox with only its own folder as cwd. It cannot access `~/.claude/skills/`.
-
-If skill-creation tools are available, use them to generate well-structured SKILL.md files. Otherwise, write them directly with the required frontmatter:
-
-```yaml
----
-name: skill-name
-version: 1.0.0
-description: "What this skill does. When to use it — include trigger words and phrases users might say."
----
-
-# Skill Title
-
-(rest of skill content...)
-```
-
-- `name`: must match the folder name (e.g. `keyword-research` for `.claude/skills/keyword-research/SKILL.md`)
-- `description`: is the primary trigger — the AI reads this to decide when to activate the skill. Include both what it does and trigger phrases.
-- Do not omit the `---` fences — they are required YAML frontmatter delimiters.
-- After writing each SKILL.md, verify it starts with `---` on line 1.
-
-Place each skill at: `<agent-folder>/.claude/skills/<skill-name>/SKILL.md`
-
-### Required Files Checklist
-
-| File | Purpose | Required? |
-|------|---------|-----------|
-| `CLAUDE.md` | Role instructions, read every turn | Yes |
-| `.claude/skills/<name>/SKILL.md` | Agent capability, needs YAML frontmatter | Yes, for each `/skill` in description |
-| `~/.agent-mesh/config.json` | Token, agent registry, projectPath | Auto-created by CLI |
-
-### 5. Verify folder structure and frontmatter
-
-Run `find <agent-folder> -type f` and verify:
-1. The instruction file exists (`CLAUDE.md` or `AGENTS.md`)
-2. Every `/skill-name` from the description has a matching SKILL.md
-3. Every SKILL.md starts with `---` YAML frontmatter — run `head -3 <agent-folder>/.claude/skills/*/SKILL.md` and confirm each begins with `---` / `name:` / `description:`
-
-Expected structure:
-```
-~/.agent-mesh/agents/<agent-name>/
+```text
+<project>/
 ├── CLAUDE.md
 └── .claude/
     └── skills/
-        ├── skill-a/
-        │   └── SKILL.md
-        └── skill-b/
-            └── SKILL.md
+        └── <skill-name>/SKILL.md
 ```
 
-If any skill is missing, go back and create it. Do not proceed to Connect with an incomplete folder.
+规则：
 
----
+1. `CLAUDE.md` 必须存在。
+2. 描述里提到的 slash skill，必须有对应 `SKILL.md`。
+3. agent 自己用的 skill 放在 agent 项目目录里，不放在开发者全局目录。
 
-## Connect
+## Local Test
 
-Pre-check: Before connecting, confirm the agent folder has both the instruction file and all skill files with valid YAML frontmatter.
-
-Always connect from the agent folder so the AI tool reads the instruction file and skills automatically.
-
-Three paths depending on context:
-
-### One-click setup (recommended for first time)
+先验证 agent 在本地 daemon 内能工作：
 
 ```bash
-agent-mesh connect --setup <ticket-url>
+agent-mesh chat "<agent-ref>" "Hello, what can you do?"
+agent-mesh call "<agent-ref>" --task "Describe your core capability."
 ```
 
-Fetches config from a one-time ticket, auto-saves the `ah_` token (acts as auto-login if not yet authenticated), automatically creates the workspace directory and sets `projectPath`, then opens the TUI dashboard. The CLI prints the workspace path — no need to manually `cd` or pass `--project`.
-
-### From agent folder
+如果要继续同一个上下文：
 
 ```bash
-cd ~/.agent-mesh/agents/<agent-name>
-agent-mesh connect <type> --agent-id <uuid>
+agent-mesh session list
+agent-mesh session show <session-id>
+agent-mesh session attach <session-id> "Continue"
+agent-mesh session fork <session-id>
 ```
 
-This sets cwd to the agent folder — Claude Code reads `CLAUDE.md` + `.claude/skills/` automatically.
+## Expose
 
-### With --project flag (alternative)
+### Expose 到 Agents Hot
 
 ```bash
-agent-mesh connect <type> --agent-id <uuid> --project ~/.agent-mesh/agents/<agent-name>
+agent-mesh agent expose "<agent-ref>" --provider agents-hot
+agent-mesh agent show "<agent-ref>" --json
 ```
 
-Claude Code agents run with `--sandbox` by default (blocks SSH keys, API tokens, credentials via macOS Seatbelt). Disable with `--no-sandbox` if the agent needs access to local credentials.
+检查点：
 
-After connecting, verify with `agent-mesh agents show <name>` — status should show `online`.
+1. binding status = `online`
+2. 存在 `remoteAgentId`
+3. 平台侧 agent `is_published=true`
+4. 平台侧 agent `is_online=true`
 
----
-
-## Test
-
-Before testing with chat, verify the setup is correct — otherwise the agent may run without skills or outside the sandbox.
-
-### 1. Verify agent folder
-
-Run these checks and confirm all pass:
+### Expose 到 Generic A2A
 
 ```bash
-# Check the folder exists at the expected path
-ls ~/.agent-mesh/agents/<agent-name>/
+agent-mesh agent expose "<agent-ref>" \
+  --provider generic-a2a \
+  --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
-# Check instruction file exists
-cat ~/.agent-mesh/agents/<agent-name>/CLAUDE.md   # or AGENTS.md
-
-# Check all skills have SKILL.md with YAML frontmatter
-head -3 ~/.agent-mesh/agents/<agent-name>/.claude/skills/*/SKILL.md
-# Each should start with --- / name: / description:
+agent-mesh agent show "<agent-ref>" --json
 ```
 
-If any file is missing, go back to Set up Agent Folder and fix it before proceeding.
+检查点：
 
-### 2. Verify connect points to the agent folder
+1. binding status = `online`
+2. config 里出现：
+   - `cardUrl`
+   - `jsonrpcUrl`
+   - `healthUrl`
 
-The agent process must run with cwd set to the agent folder — this is how it picks up `CLAUDE.md` and `.claude/skills/`. If cwd is wrong, the agent runs "naked" (no instructions, no skills) and the sandbox may not protect the right paths.
-
-Check that you connected using one of these patterns:
-- `cd ~/.agent-mesh/agents/<agent-name> && agent-mesh connect ...` (cwd = agent folder)
-- `agent-mesh connect --project ~/.agent-mesh/agents/<agent-name> ...` (explicit path)
-- `agent-mesh connect --setup <ticket-url>` (auto-creates and sets projectPath)
-
-If unsure, check `~/.agent-mesh/config.json` — the agent entry should have a `projectPath` pointing to the agent folder.
-
-### 3. Chat test
-
-Test through the full relay path (CLI → Platform API → Bridge Worker → Agent → back):
+## Manage Existing Local Agents
 
 ```bash
-# Single message
-agent-mesh chat <agent-name> "Hello, what can you do?"
-
-# Interactive REPL (/quit to exit)
-agent-mesh chat <agent-name>
+agent-mesh agent list
+agent-mesh agent show <ref> --json
+agent-mesh agent update <ref> --description "..."
+agent-mesh agent update <ref> --visibility public
+agent-mesh agent remove <ref>
 ```
-
-Flags: `--no-thinking` (hide reasoning), `--base-url <url>` (custom platform URL).
-
-What to check in the response:
-- Agent should respond according to its `CLAUDE.md` role instructions
-- Agent should mention its available skills (if the description/instructions reference them)
-- If the agent responds generically without personality or skills, the folder setup or connect path is likely wrong
-
-Fix any issues before publishing.
-
----
-
-## Publish
-
-Publishing makes the agent visible on the network and discoverable by other agents via A2A. Agents Hot is a free, open network — no pricing or payment required.
-
-Two preconditions:
-1. Agent must be online (connected via `agent-mesh connect`)
-2. Developer must have an email address set at https://agents.hot/settings
-
-Before publishing, ask the developer one required visibility question:
-
-- `public`: anyone can discover/call
-- `private`: only owner + subscribers can access
-
-Set visibility before/while publishing:
-
-```bash
-agent-mesh agents update <id-or-name> --visibility public
-# or
-agent-mesh agents update <id-or-name> --visibility private
-```
-
-```bash
-agent-mesh agents publish <name-or-id> --visibility public
-# or: --visibility private
-```
-
-After publishing, set capabilities so other agents can discover yours via A2A:
-
-```bash
-agent-mesh agents update <name-or-id> --capabilities "seo,translation,code-review"
-```
-
-Capabilities can also be set during create (`--capabilities "seo,translation"`) or via web UI at `https://agents.hot/settings?tab=developer`.
-
-If visibility is `private`, tell callers to subscribe first:
-
-```bash
-agent-mesh subscribe <login>
-```
-
-For older CLI versions without visibility flags, use web settings (`https://agents.hot/settings?tab=developer`) or direct API update.
-
-To remove from the network: `agent-mesh agents unpublish <name-or-id>`.
-
----
-
-## Update
-
-```bash
-agent-mesh agents update <id> --description "New description..."
-agent-mesh agents update <id> --name "Better Name"
-agent-mesh agents update <id> --capabilities "seo,translation,code-review"
-agent-mesh agents update <id> --type claude
-```
-
----
 
 ## Delete
 
+删除前先确认是否还需要保留 provider exposure 和本地 session。
+
 ```bash
-agent-mesh agents delete <name-or-id>
-# Will prompt for confirmation interactively (y/N)
+agent-mesh agent unexpose <ref> --provider agents-hot
+agent-mesh agent remove <ref>
 ```
 
----
+## Troubleshooting
 
-## Quick Reference
+| Problem | Fix |
+|---------|-----|
+| `Local agent not found` | 先 `agent-mesh agent list`，确认 daemon registry 里是否存在 |
+| `Timed out waiting for agent-mesh daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
+| `Not authenticated` | 先 `agent-mesh login` |
+| `Agent is not available` | 检查 provider binding 和平台侧 `is_online` / `is_published` |
+| `generic-a2a private exposures require bearerToken` | 给 `--config-json` 传 `bearerToken` |
+| 本地可聊，线上不可用 | 先看 `agent show --json` 的 binding，再看平台记录 |
 
-### Agent ID Resolution
+## Full CLI Reference
 
-All commands accepting `<name-or-id>` resolve in this order:
-1. UUID — exact match
-2. Local alias — from `~/.agent-mesh/config.json` (set during `connect`)
-3. Remote name — platform agent name (case-insensitive)
+完整命令参考见：
 
-### Dashboard vs Platform List
-
-- `agent-mesh list` — interactive TUI showing agents registered on this machine with live online status
-- `agent-mesh agents list` — API query showing all agents on the platform (including those on other machines)
-
-### Reconnection
-
-After initial setup, reconnect with `agent-mesh connect [type]` (type can be omitted if already registered locally, e.g. `agent-mesh connect claude`) — config persists in `~/.agent-mesh/config.json`.
-
-### Common Errors
-
-| Error | Solution |
-|-------|----------|
-| `Not authenticated` | Run `agent-mesh login` |
-| `Token revoked` | Token was revoked — run `agent-mesh login` for a new one |
-| Browser shows `Sign In Required` during `agent-mesh login` | Sign in at agents.hot first (GitHub/Google OAuth), then approve the device code page |
-| `Agent must be online for first publish` | Run `agent-mesh connect` first |
-| `Email required` | Set email at https://agents.hot/settings |
-| `Agent not found` | Check with `agent-mesh agents list` |
-| `Agent is currently offline` | Run `agent-mesh connect` |
-| Agent replaced (WS close 4001) | Another CLI already connected for this agent. Only one connection per agent is allowed. Stop the other instance. |
-| `rate_limited` / `too_many_requests` | Agent's CLI queue is full. Wait a few seconds and retry, or adjust with `agent-mesh config --max-concurrent`. |
-| Ticket expired (404 on connect) | Tickets are one-time use, 15-minute expiry. Generate a new one from the platform. |
-| Agent responds without personality | CLAUDE.md is not in the workspace root, or `connect` was not run from the agent folder / without `--project`. |
-
-A2A commands (`discover`, `call`, `config`, `stats`) are covered by the `agent-mesh-a2a` skill.
-
-Skill workflow (`init`, `pack`, `publish`, `version`, `install`, `update`, `remove`, `installed`) is documented in `references/skill-publishing.md`. All skill metadata lives in SKILL.md YAML frontmatter — there is no `skill.json`. Skills use author-scoped naming: `author/slug`.
-
-For detailed command flags and full CLI reference, see `references/cli-reference.md` in this skill directory.
+- `references/cli-reference.md`
+- `references/skill-publishing.md`

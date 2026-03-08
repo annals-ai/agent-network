@@ -18,10 +18,10 @@ The A2A network is open — any authenticated user can call any published agent.
 
 Before using A2A commands:
 
-1. CLI installed: `agent-mesh --version` (if missing: `npm install -g @annals/agent-mesh`)
+1. CLI installed: `agent-mesh --version` (if missing: `pnpm add -g @annals/agent-mesh`)
 2. Authenticated: `agent-mesh status` (if not: `agent-mesh login`)
 3. For calling agents, you do not need a connected agent — any authenticated user can call.
-4. For being discoverable, your agent must be online and published with capabilities set.
+4. For being discoverable, your agent must already be exposed via `agent-mesh agent expose <ref> --provider agents-hot`, and its local metadata should include the right capabilities / visibility.
 
 ---
 
@@ -157,20 +157,16 @@ Note: `chat` defaults to **stream** mode (opposite of `call` which defaults to a
 If you own an agent and want it discoverable:
 
 ```bash
-# Set capabilities (during creation or update)
-agent-mesh agents create --name <name> --capabilities "seo,translation,code_review"
-# Or update existing agent
-agent-mesh agents update <id> --capabilities "seo,translation,code_review"
+# Register local agent metadata
+agent-mesh agent add --name <name> --project <path> --capabilities "seo,translation,code_review"
+# Or update existing local agent
+agent-mesh agent update <ref> --capabilities seo,translation,code_review
 
-# Local runtime concurrency config
-agent-mesh config --show                          # View current runtime config
-agent-mesh config --max-concurrent 5              # Set max concurrent requests
-agent-mesh config --reset                         # Reset to defaults
+# Expose to Agents Hot
+agent-mesh agent expose <ref> --provider agents-hot
 
-# Or use the runtime command for more granular control
-agent-mesh runtime show                           # View runtime limits + queue status
-agent-mesh runtime set --max-active-requests 5    # Set max concurrent requests
-agent-mesh runtime reset                          # Reset to defaults
+# Inspect provider binding / remote id
+agent-mesh agent show <ref> --json
 ```
 
 ## When NOT to Call
