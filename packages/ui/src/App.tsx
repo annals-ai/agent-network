@@ -29,6 +29,7 @@ import { SessionsPanel } from './components/SessionsPanel';
 import { TasksPanel } from './components/TasksPanel';
 import { TranscriptPanel } from './components/TranscriptPanel';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { TabsContent } from '@/components/ui/tabs';
 import { useI18n } from '@/lib/i18n';
 
 interface SessionFilters {
@@ -43,13 +44,36 @@ const DEFAULT_FILTERS: SessionFilters = {
   status: 'all',
 };
 
+const CONSOLE_TABS = [
+  'overview',
+  'agents',
+  'sessions',
+  'transcript',
+  'tasks',
+  'exposure',
+  'logs',
+] as const;
+
+type ConsoleTab = typeof CONSOLE_TABS[number];
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveTabFromHash(hash: string): ConsoleTab {
+  const value = hash.replace(/^#/, '');
+  return CONSOLE_TABS.includes(value as ConsoleTab) ? value as ConsoleTab : 'overview';
 }
 
 export default function App() {
   const { t } = useI18n();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [activeTab, setActiveTab] = useState<ConsoleTab>(() => {
+    if (typeof window === 'undefined') {
+      return 'overview';
+    }
+    return resolveTabFromHash(window.location.hash);
+  });
   const [messages, setMessages] = useState<SessionMessage[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [filters, setFilters] = useState<SessionFilters>(DEFAULT_FILTERS);
@@ -89,6 +113,17 @@ export default function App() {
 
   useEffect(() => {
     void refreshDashboard();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const applyHash = () => setActiveTab(resolveTabFromHash(window.location.hash));
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
   }, []);
 
   const filteredSessions = dashboard
@@ -315,12 +350,26 @@ export default function App() {
     }
   }
 
+  function handleTabChange(nextTab: string): void {
+    const resolved = resolveTabFromHash(`#${nextTab}`);
+    setActiveTab(resolved);
+
+    if (typeof window !== 'undefined') {
+      const nextHash = `#${resolved}`;
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${nextHash}`);
+      }
+    }
+  }
+
   return (
     <AppShell
+      activeTab={activeTab}
       uiBaseUrl={dashboard?.status.daemon.uiBaseUrl ?? null}
       startedAt={dashboard?.status.daemon.startedAt ?? new Date().toISOString()}
       refreshing={refreshing}
       daemonActionState={daemonActionState}
+      onTabChange={handleTabChange}
       onRefresh={() => {
         void refreshDashboard(selectedSessionId);
       }}
@@ -353,9 +402,11 @@ export default function App() {
 
       {dashboard ? (
         <>
-          <OverviewPanel status={dashboard.status} />
+          <TabsContent value="overview" className="mt-0">
+            <OverviewPanel status={dashboard.status} />
+          </TabsContent>
 
-          <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+          <TabsContent value="agents" className="mt-0">
             <AgentsPanel
               agents={dashboard.agents}
               providerOptions={dashboard.providerCatalog}
@@ -369,7 +420,9 @@ export default function App() {
               onUnexposeAgent={handleUnexposeAgent}
               onUpdateAgent={handleUpdateAgent}
             />
+          </TabsContent>
 
+          <TabsContent value="sessions" className="mt-0">
             <SessionsPanel
               agents={dashboard.agents}
               tasks={dashboard.tasks}
@@ -379,9 +432,9 @@ export default function App() {
               onFiltersChange={setFilters}
               onSelectSession={setSelectedSessionId}
             />
-          </div>
+          </TabsContent>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
+          <TabsContent value="transcript" className="mt-0">
             <TranscriptPanel
               agents={dashboard.agents}
               tasks={dashboard.tasks}
@@ -411,18 +464,23 @@ export default function App() {
                 void handleSendMessage();
               }}
             />
+          </TabsContent>
 
+          <TabsContent value="tasks" className="mt-0">
             <TasksPanel
               tasks={dashboard.tasks}
               onCreateTask={handleCreateTask}
               onArchiveTask={handleArchiveTask}
             />
-          </div>
+          </TabsContent>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <TabsContent value="exposure" className="mt-0">
             <ExposurePanel providers={dashboard.providers} />
+          </TabsContent>
+
+          <TabsContent value="logs" className="mt-0">
             <LogsPanel logs={dashboard.logs} path={dashboard.logPath} />
-          </div>
+          </TabsContent>
         </>
       ) : null}
     </AppShell>

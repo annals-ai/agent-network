@@ -4,15 +4,18 @@ import { Activity, Globe2, Power, RefreshCw, RotateCcw, Server } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useI18n, type LanguagePreference } from '@/lib/i18n';
 import { useTheme, type ThemePreference } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 interface AppShellProps {
+  activeTab: string;
   uiBaseUrl: string | null;
   startedAt: string;
   refreshing: boolean;
   daemonActionState: 'stop' | 'restart' | null;
+  onTabChange(tabId: string): void;
   onRefresh(): void;
   onStopDaemon(): void;
   onRestartDaemon(): void;
@@ -20,10 +23,12 @@ interface AppShellProps {
 }
 
 export function AppShell({
+  activeTab,
   uiBaseUrl,
   startedAt,
   refreshing,
   daemonActionState,
+  onTabChange,
   onRefresh,
   onStopDaemon,
   onRestartDaemon,
@@ -42,7 +47,7 @@ export function AppShell({
   ];
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <Tabs value={activeTab} onValueChange={onTabChange} className="min-h-screen bg-muted/30">
       <div className="mx-auto grid w-full max-w-[1680px] gap-6 px-4 py-4 lg:grid-cols-[17.5rem_minmax(0,1fr)] lg:px-6 lg:py-6">
         <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
           <Card className="h-full overflow-hidden">
@@ -92,19 +97,6 @@ export function AppShell({
                   </NativeSelect>
                 </div>
               </div>
-
-              <nav aria-label="Sections" className="grid gap-1">
-                {navItems.map((item) => (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors"
-                  >
-                    <span>{item.label}</span>
-                    <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">{t('common.jump')}</span>
-                  </a>
-                ))}
-              </nav>
 
               <div className="mt-auto grid gap-2">
                 <Button className="w-full justify-center gap-2" onClick={onRefresh} disabled={refreshing || daemonActionState !== null}>
@@ -158,8 +150,24 @@ export function AppShell({
           </Card>
         </aside>
 
-        <main className="flex min-w-0 flex-col gap-6">{children}</main>
+        <main className="flex min-w-0 flex-col gap-6">
+          <div className="overflow-hidden rounded-2xl border bg-background/90 p-2 shadow-xs">
+            <TabsList className="h-auto w-full justify-start gap-2 overflow-x-auto bg-transparent p-0">
+              {navItems.map((item) => (
+                <TabsTrigger
+                  key={item.id}
+                  value={item.id}
+                  className="min-w-fit rounded-xl border border-transparent px-4 py-2"
+                >
+                  {item.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+
+          {children}
+        </main>
       </div>
-    </div>
+    </Tabs>
   );
 }
