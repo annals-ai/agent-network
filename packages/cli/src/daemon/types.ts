@@ -16,6 +16,7 @@ export interface DaemonAgent {
   runtimeType: string;
   projectPath: string;
   sandbox: boolean;
+  persona: string | null;
   description: string | null;
   capabilities: string[];
   visibility: AgentVisibility;
@@ -99,6 +100,7 @@ export interface CreateAgentInput {
   runtimeType?: string;
   projectPath: string;
   sandbox?: boolean;
+  persona?: string | null;
   description?: string | null;
   capabilities?: string[];
   visibility?: AgentVisibility;
@@ -110,6 +112,7 @@ export interface UpdateAgentInput {
   runtimeType?: string;
   projectPath?: string;
   sandbox?: boolean;
+  persona?: string | null;
   description?: string | null;
   capabilities?: string[];
   visibility?: AgentVisibility;
@@ -214,7 +217,9 @@ export type RuntimeStreamEvent =
   | { type: 'chunk'; sessionId: string; delta: string }
   | { type: 'tool'; sessionId: string; event: { kind: string; tool_name: string; tool_call_id: string; delta: string } }
   | { type: 'done'; sessionId: string; result: string; claudeResumeId: string | null }
-  | { type: 'error'; sessionId?: string; message: string };
+  | { type: 'error'; sessionId?: string; message: string }
+  | { type: 'fan-out-progress'; agentSlug: string; status: 'started' | 'chunk' | 'done' | 'error'; delta?: string; error?: string }
+  | { type: 'fan-out-verdict'; delta: string };
 
 export interface ProviderExposureResult {
   remoteAgentId?: string | null;
@@ -222,4 +227,25 @@ export interface ProviderExposureResult {
   status: string;
   config?: Record<string, unknown>;
   lastSyncedAt?: string | null;
+}
+
+export interface FanOutInput {
+  task: string;
+  agentRefs: string[];
+  synthesizerRef?: string;
+  tags?: string[];
+}
+
+export interface FanOutAgentResult {
+  agentRef: string;
+  agentSlug: string;
+  sessionId: string;
+  result: string;
+  error?: string;
+}
+
+export interface FanOutResult {
+  taskGroupId: string;
+  results: FanOutAgentResult[];
+  verdict?: string;
 }

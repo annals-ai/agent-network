@@ -40,6 +40,7 @@ export function buildPlatformPayload(agent: DaemonAgent): Record<string, unknown
   return {
     name: agent.name,
     slug: agent.slug,
+    persona: agent.persona || undefined,
     description: agent.description || undefined,
     agent_type: agent.runtimeType,
     visibility: agent.visibility === 'unlisted' ? 'private' : agent.visibility,

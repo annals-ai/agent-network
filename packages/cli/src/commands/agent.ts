@@ -28,6 +28,7 @@ export function registerAgentCommand(program: Command): void {
     .option('--slug <slug>', 'Local slug')
     .option('--runtime-type <type>', 'Runtime type', 'claude')
     .option('--sandbox', 'Enable sandbox/workspace isolation for this agent')
+    .option('--persona <text>', 'Persona/role prompt injected before each message')
     .option('--description <text>', 'Description')
     .option('--visibility <visibility>', 'public | private | unlisted', 'private')
     .option('--capabilities <caps>', 'Comma-separated capabilities')
@@ -37,6 +38,7 @@ export function registerAgentCommand(program: Command): void {
       slug?: string;
       runtimeType: string;
       sandbox?: boolean;
+      persona?: string;
       description?: string;
       visibility: 'public' | 'private' | 'unlisted';
       capabilities?: string;
@@ -48,6 +50,7 @@ export function registerAgentCommand(program: Command): void {
         runtimeType: opts.runtimeType,
         projectPath: opts.project,
         sandbox: opts.sandbox === true,
+        persona: opts.persona,
         description: opts.description,
         visibility: opts.visibility,
         capabilities: parseCapabilities(opts.capabilities),
@@ -128,6 +131,7 @@ export function registerAgentCommand(program: Command): void {
     .option('--project <path>', 'Project directory')
     .option('--sandbox', 'Enable sandbox')
     .option('--no-sandbox', 'Disable sandbox')
+    .option('--persona <text>', 'Persona/role prompt injected before each message')
     .option('--description <text>', 'Description')
     .option('--visibility <visibility>', 'public | private | unlisted')
     .option('--capabilities <caps>', 'Comma-separated capabilities')
@@ -137,6 +141,7 @@ export function registerAgentCommand(program: Command): void {
       runtimeType?: string;
       project?: string;
       sandbox?: boolean;
+      persona?: string;
       description?: string;
       visibility?: 'public' | 'private' | 'unlisted';
       capabilities?: string;
@@ -149,6 +154,7 @@ export function registerAgentCommand(program: Command): void {
         runtimeType: opts.runtimeType,
         projectPath: opts.project,
         sandbox: typeof opts.sandbox === 'boolean' ? opts.sandbox : undefined,
+        persona: opts.persona,
         description: opts.description,
         visibility: opts.visibility,
         capabilities: parseCapabilities(opts.capabilities),

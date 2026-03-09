@@ -101,7 +101,7 @@ abstract destroySession(id: string): Promise<void>
 
 `SessionHandle` 提供: `send()`, `onChunk`, `onDone`, `onError`, `kill()`
 
-### Claude（唯一已实现的适配器）
+### Claude 适配器
 
 - 协议: `claude -p <message> [--resume <session_id>] --output-format stream-json --verbose --include-partial-messages --dangerously-skip-permissions`
 - 每条消息 spawn 新进程（`spawnAgent` 是 async），stdout 读取流式事件
@@ -109,7 +109,14 @@ abstract destroySession(id: string): Promise<void>
 - 30 分钟空闲超时 kill（`DEFAULT_IDLE_TIMEOUT = 30 * 60 * 1000`，可通过 `AGENT_BRIDGE_CLAUDE_IDLE_TIMEOUT_MS` 环境变量覆盖）
 - `spawnAgent` 是 async 函数（因为 `wrapWithSandbox` 是 async），`send()` 委托给 `private async launchProcess()`
 
-只支持 `claude` agent type。如需支持新类型，在 `adapters/` 新建文件并注册到 `connect.ts` 的 `createAdapter()` 即可。
+### Codex 适配器
+
+- 协议: `codex exec --json <message>`，输出 JSONL 事件流
+- 事件: `message`（含 `output_text` content）→ chunk，`completed` → done，`error` → error
+- 环境变量: `OPENAI_API_KEY`
+- Profile 定义在 `packages/cli/src/adapters/profiles.ts` 的 `CODEX_PROFILE`
+
+两种适配器通过 `CliProfile` 接口统一（`profiles.ts`），`getProfile('claude' | 'codex')` 返回对应配置。
 
 ## 本地 Daemon / Expose 流程
 
@@ -138,25 +145,64 @@ agent-mesh status                          # 查看连接状态
 agent-mesh help [--json]                   # 帮助信息（--json 输出机器可读格式）
 ```
 
-### Agent 连接与管理
+### Daemon 管理
 
 ```bash
-agent-mesh connect [type]                  # 连接 Agent（type 可省略）
+agent-mesh daemon start                    # 启动本地 daemon
+agent-mesh daemon stop                     # 停止 daemon
+agent-mesh daemon status                   # 查看 daemon 状态
+agent-mesh daemon ui                       # 打开本地 Web UI
+```
+
+### 本地 Agent 管理（daemon-first）
+
+```bash
+agent-mesh agent add                       # 注册本地 Agent
+  --name <name>            # Agent 名称（必填）
+  --project <path>         # 项目路径（必填）
+  --runtime-type <type>    # 运行时类型：claude | codex（默认 claude）
+  --persona <text>         # 角色设定（注入 prompt 前缀）
+  --sandbox                # 启用沙箱隔离
+  --description <text>     # Agent 描述
+  --capabilities <caps>    # 逗号分隔的能力标签
+  --visibility <vis>       # public | private | unlisted
+agent-mesh agent list [--json]             # 列出本地 Agent
+agent-mesh agent show <ref> [--json]       # 查看 Agent 详情
+agent-mesh agent update <ref>              # 更新 Agent 属性
+  --name <name>            # 新名称
+  --persona <text>         # 新角色设定
+  --description <text>     # 新描述
+  # ...其他同 add
+agent-mesh agent remove <ref>              # 删除本地 Agent
+agent-mesh agent expose <ref>              # 将 Agent 暴露到平台
+  --provider <name>        # Provider 名称（如 agents-hot）
+agent-mesh agent unexpose <ref>            # 取消暴露
+  --provider <name>
+```
+
+### Fan-Out 多 Agent 编排
+
+```bash
+agent-mesh fan-out                         # 并行调用多个 Agent 执行同一任务
+  --task <description>     # 任务描述（必填）
+  --agents <refs>          # 逗号分隔的 Agent slug/id（必填）
+  --synthesizer <ref>      # 合成 Agent（可选，汇总各 Agent 结果）
+  --stream                 # 实时输出各 Agent 的 chunk
+  --json                   # JSONL 输出
+  --timeout <seconds>      # 超时秒数（默认 600）
+```
+
+### 旧式直连（兼容）
+
+```bash
+agent-mesh connect [type]                  # 直接连接 Agent 到 Bridge
   --setup <url>            # 一键接入 ticket URL
   --agent-id <id>          # Agent UUID
   --project <path>         # Agent workspace 路径
   --bridge-url <url>       # Bridge Worker WS URL (默认 wss://bridge.agents.hot/ws)
   --sandbox                # 在沙箱中运行 (需要 srt)
   --no-sandbox             # 禁用沙箱
-  --foreground             # 前台运行 (非 --setup 模式默认)
-
-agent-mesh list                            # 交互式 TUI 管理面板（本机 Agent）（alias: ls）
-agent-mesh start [name] [--all]            # 后台启动 Agent
-agent-mesh stop [name] [--all]             # 停止 Agent
-agent-mesh restart [name] [--all]          # 重启 Agent
-agent-mesh logs <name> [-n <lines>]        # 查看日志（默认 50 行）
-agent-mesh open <name>                     # 在浏览器打开 Agent 页面
-agent-mesh remove <name> [--force]         # 从本地注册表移除 Agent
+  --foreground             # 前台运行
 agent-mesh install [--force]               # 安装 macOS LaunchAgent（开机自启）
 agent-mesh uninstall                       # 移除 macOS LaunchAgent
 ```

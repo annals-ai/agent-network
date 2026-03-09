@@ -93,6 +93,7 @@ export class DaemonStore {
         runtime_type TEXT NOT NULL,
         project_path TEXT NOT NULL,
         sandbox INTEGER NOT NULL DEFAULT 0,
+        persona TEXT,
         description TEXT,
         capabilities TEXT NOT NULL DEFAULT '[]',
         visibility TEXT NOT NULL DEFAULT 'private',
@@ -210,6 +211,8 @@ export class DaemonStore {
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
       );
     `);
+
+    try { this.db.exec(`ALTER TABLE agents ADD COLUMN persona TEXT`); } catch {}
   }
 
   private ensureDefaultRuntimeLimit(): void {
@@ -245,6 +248,7 @@ export class DaemonStore {
       runtimeType: String(row.runtime_type),
       projectPath: String(row.project_path),
       sandbox: intToBool(row.sandbox),
+      persona: row.persona ? String(row.persona) : null,
       description: row.description ? String(row.description) : null,
       capabilities: parseJson<string[]>(row.capabilities as string, []),
       visibility: String(row.visibility) as DaemonAgent['visibility'],
@@ -372,8 +376,8 @@ export class DaemonStore {
 
     this.db.prepare(`
       INSERT INTO agents (
-        id, slug, name, runtime_type, project_path, sandbox, description, capabilities, visibility, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, slug, name, runtime_type, project_path, sandbox, persona, description, capabilities, visibility, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       slug,
@@ -381,6 +385,7 @@ export class DaemonStore {
       runtimeType,
       input.projectPath,
       boolToInt(input.sandbox ?? false),
+      input.persona ?? null,
       input.description ?? null,
       JSON.stringify(input.capabilities ?? []),
       input.visibility ?? 'private',
@@ -406,6 +411,7 @@ export class DaemonStore {
     if (input.runtimeType !== undefined) update.runtime_type = input.runtimeType;
     if (input.projectPath !== undefined) update.project_path = input.projectPath;
     if (input.sandbox !== undefined) update.sandbox = boolToInt(input.sandbox);
+    if (input.persona !== undefined) update.persona = input.persona;
     if (input.description !== undefined) update.description = input.description;
     if (input.capabilities !== undefined) update.capabilities = JSON.stringify(input.capabilities);
     if (input.visibility !== undefined) update.visibility = input.visibility;

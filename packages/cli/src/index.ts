@@ -9,6 +9,7 @@ import { registerDiscoverCommand } from './commands/discover.js';
 import { registerCallCommand } from './commands/call.js';
 import { registerSubscribeCommand } from './commands/subscribe.js';
 import { registerProfileCommand } from './commands/profile.js';
+import { registerFanOutCommand } from './commands/fan-out.js';
 import { registerDaemonCommand } from './commands/daemon.js';
 import { registerTaskCommand } from './commands/task.js';
 import { registerSessionCommand } from './commands/session.js';
@@ -53,6 +54,7 @@ registerDiscoverCommand(program);
 registerCallCommand(program);
 registerSubscribeCommand(program);
 registerProfileCommand(program);
+registerFanOutCommand(program);
 
 program
   .command('help')

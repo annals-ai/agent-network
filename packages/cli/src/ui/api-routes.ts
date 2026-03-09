@@ -475,6 +475,7 @@ export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHa
           runtimeType: typeof body.runtimeType === 'string' ? body.runtimeType : 'claude',
           projectPath: expectNonEmptyString(body.projectPath, 'projectPath'),
           sandbox: body.sandbox === true,
+          persona: typeof body.persona === 'string' ? body.persona : null,
           description: typeof body.description === 'string' ? body.description : null,
           capabilities: Array.isArray(body.capabilities) ? body.capabilities.map((item) => String(item)) : [],
           visibility: typeof body.visibility === 'string'
@@ -499,6 +500,7 @@ export function createUiApiHandler(options: UiApiRoutesOptions): UiHttpRequestHa
           runtimeType: typeof body.runtimeType === 'string' ? body.runtimeType : undefined,
           projectPath: typeof body.projectPath === 'string' ? body.projectPath : undefined,
           sandbox: typeof body.sandbox === 'boolean' ? body.sandbox : undefined,
+          persona: typeof body.persona === 'string' ? body.persona : undefined,
           description: typeof body.description === 'string' ? body.description : undefined,
           capabilities: Array.isArray(body.capabilities) ? body.capabilities.map((item) => String(item)) : undefined,
           visibility: typeof body.visibility === 'string'

@@ -10,6 +10,7 @@ describe('buildPlatformPayload', () => {
       runtimeType: 'claude',
       projectPath: '/tmp/project',
       sandbox: false,
+      persona: null,
       description: 'smoke test',
       capabilities: ['chat'],
       visibility: 'unlisted',

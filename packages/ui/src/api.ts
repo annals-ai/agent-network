@@ -27,6 +27,7 @@ export interface AgentRecord {
   runtimeType: string;
   projectPath: string;
   sandbox: boolean;
+  persona: string | null;
   description: string | null;
   capabilities: string[];
   visibility: 'public' | 'private' | 'unlisted';
@@ -42,6 +43,7 @@ export interface AgentMutationInput {
   runtimeType: string;
   projectPath: string;
   sandbox: boolean;
+  persona?: string;
   description: string;
   capabilities: string[];
   visibility: 'public' | 'private' | 'unlisted';

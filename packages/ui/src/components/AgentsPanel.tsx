@@ -33,6 +33,7 @@ interface AgentFormState {
   runtimeType: string;
   projectPath: string;
   sandbox: boolean;
+  persona: string;
   description: string;
   capabilitiesText: string;
   visibility: AgentMutationInput['visibility'];
@@ -44,6 +45,7 @@ const DEFAULT_AGENT_FORM: AgentFormState = {
   runtimeType: 'claude',
   projectPath: '',
   sandbox: false,
+  persona: '',
   description: '',
   capabilitiesText: '',
   visibility: 'private',
@@ -60,6 +62,7 @@ function formStateFromAgent(agent?: AgentRecord): AgentFormState {
     runtimeType: agent.runtimeType,
     projectPath: agent.projectPath,
     sandbox: agent.sandbox,
+    persona: agent.persona ?? '',
     description: agent.description ?? '',
     capabilitiesText: agent.capabilities.join(', '),
     visibility: agent.visibility,
@@ -111,6 +114,7 @@ function AgentFormDialog({
         runtimeType: form.runtimeType.trim() || 'claude',
         projectPath: form.projectPath.trim(),
         sandbox: form.sandbox,
+        persona: form.persona.trim() || undefined,
         description: form.description.trim(),
         capabilities: parseCapabilities(form.capabilitiesText),
         visibility: form.visibility,
@@ -181,6 +185,16 @@ function AgentFormDialog({
             value={form.capabilitiesText}
             onChange={(event) => setForm((current) => ({ ...current, capabilitiesText: event.target.value }))}
             placeholder={t('agents.capabilitiesPlaceholder')}
+          />
+        </label>
+
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">{t('common.persona')}</span>
+          <Textarea
+            value={form.persona}
+            onChange={(event) => setForm((current) => ({ ...current, persona: event.target.value }))}
+            placeholder={t('agents.personaPlaceholder')}
+            className="min-h-20"
           />
         </label>
 
@@ -318,6 +332,10 @@ export function AgentsPanel({
                     </div>
 
                     <p className="mt-3 text-sm leading-6">{agent.description ?? agent.projectPath}</p>
+
+                    {agent.persona ? (
+                      <p className="text-muted-foreground mt-1.5 text-xs italic leading-5">{agent.persona}</p>
+                    ) : null}
 
                     <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 text-xs">
                       <span className="inline-flex items-center gap-1.5">

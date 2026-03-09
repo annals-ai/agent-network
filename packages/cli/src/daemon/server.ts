@@ -367,6 +367,7 @@ export class AgentMeshDaemonServer {
           runtimeType: typeof request.params?.runtimeType === 'string' ? request.params.runtimeType : 'claude',
           projectPath: expectString(request.params?.projectPath, 'projectPath'),
           sandbox: request.params?.sandbox === true,
+          persona: typeof request.params?.persona === 'string' ? request.params.persona : null,
           description: typeof request.params?.description === 'string' ? request.params.description : null,
           capabilities: Array.isArray(request.params?.capabilities)
             ? request.params?.capabilities.map((item) => String(item))
@@ -386,6 +387,7 @@ export class AgentMeshDaemonServer {
           runtimeType: typeof request.params?.runtimeType === 'string' ? request.params.runtimeType : undefined,
           projectPath: typeof request.params?.projectPath === 'string' ? request.params.projectPath : undefined,
           sandbox: typeof request.params?.sandbox === 'boolean' ? request.params.sandbox : undefined,
+          persona: typeof request.params?.persona === 'string' ? request.params.persona : undefined,
           description: typeof request.params?.description === 'string' ? request.params.description : undefined,
           capabilities: Array.isArray(request.params?.capabilities)
             ? request.params.capabilities.map((item) => String(item))
@@ -544,6 +546,21 @@ export class AgentMeshDaemonServer {
             }
             : undefined,
         };
+      }
+
+      case 'runtime.fan-out': {
+        const task = expectString(request.params?.task, 'task');
+        const agentRefs = Array.isArray(request.params?.agentRefs)
+          ? (request.params.agentRefs as string[]).map(String)
+          : [];
+        if (agentRefs.length === 0) throw new Error('agentRefs must be a non-empty array');
+        const result = await this.runtime.fanOut({
+          task,
+          agentRefs,
+          synthesizerRef: typeof request.params?.synthesizerRef === 'string' ? request.params.synthesizerRef : undefined,
+          tags: normalizeTags(request.params?.tags),
+        }, emit);
+        return result;
       }
 
       default:
