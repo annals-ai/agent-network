@@ -73,7 +73,7 @@ export function buildPromptFromHistory(messages: SessionMessage[], nextMessage: 
     .join('\n\n');
 
   return [
-    'Continue the existing agent-mesh local session using the transcript below.',
+    'Continue the existing agent-network local session using the transcript below.',
     'Preserve context and respond as the assistant for the next user turn.',
     '',
     'Transcript:',

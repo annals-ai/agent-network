@@ -13,7 +13,7 @@ describe('GenericA2AProvider', () => {
   let agent: DaemonAgent;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-mesh-generic-a2a-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-generic-a2a-'));
     store = new DaemonStore(join(tempDir, 'state.db'));
     provider = new GenericA2AProvider();
     agent = store.createAgent({

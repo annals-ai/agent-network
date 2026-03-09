@@ -1,6 +1,6 @@
 # @annals/bridge-protocol
 
-Type definitions and constants for [Bridge Protocol v1](https://github.com/annals-ai/agent-mesh) — the WebSocket protocol between agent-mesh CLI and the Bridge Worker.
+Type definitions and constants for [Bridge Protocol v1](https://github.com/annals-ai/agent-network) — the WebSocket protocol between agent-network CLI and the Bridge Worker.
 
 ## Install
 
@@ -41,9 +41,9 @@ import { BRIDGE_PROTOCOL_VERSION, BridgeErrorCode } from '@annals/bridge-protoco
 
 ## Related
 
-- [`@annals/agent-mesh`](https://www.npmjs.com/package/@annals/agent-mesh) — CLI tool
-- [GitHub repo](https://github.com/annals-ai/agent-mesh) — full monorepo
+- [`@annals/agent-network`](https://www.npmjs.com/package/@annals/agent-network) — CLI tool
+- [GitHub repo](https://github.com/annals-ai/agent-network) — full monorepo
 
 ## License
 
-[MIT](https://github.com/annals-ai/agent-mesh/blob/main/LICENSE)
+[MIT](https://github.com/annals-ai/agent-network/blob/main/LICENSE)

@@ -13,7 +13,7 @@ function requireUiUrl(url: string | null | undefined): string {
 export function registerUiCommand(program: Command): void {
   const ui = program
     .command('ui')
-    .description('Manage the local agent-mesh Web UI');
+    .description('Manage the local agent-network Web UI');
 
   ui
     .command('serve')

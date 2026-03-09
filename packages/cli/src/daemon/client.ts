@@ -51,7 +51,7 @@ export async function requestDaemon<T>(
     };
 
     socket.once('error', (error) => {
-      closeWithError(new Error(`Failed to connect to agent-mesh daemon: ${error.message}`));
+      closeWithError(new Error(`Failed to connect to agent-network daemon: ${error.message}`));
     });
 
     socket.once('connect', () => {

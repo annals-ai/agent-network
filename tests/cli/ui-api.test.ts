@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AgentMeshDaemonServer } from '../../packages/cli/src/daemon/server.js';
+import { AgentNetworkDaemonServer } from '../../packages/cli/src/daemon/server.js';
 import { DaemonStore } from '../../packages/cli/src/daemon/store.js';
 import { parseSseChunk } from '../../packages/cli/src/utils/sse-parser.js';
 
@@ -85,13 +85,13 @@ async function openJsonSseStream(url: string): Promise<{
   };
 }
 
-describe('AgentMeshDaemonServer UI API', () => {
+describe('AgentNetworkDaemonServer UI API', () => {
   let tempDir: string;
   let dbPath: string;
-  let server: AgentMeshDaemonServer | null = null;
+  let server: AgentNetworkDaemonServer | null = null;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-mesh-ui-api-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-ui-api-'));
     dbPath = join(tempDir, 'state.db');
   });
 
@@ -126,7 +126,7 @@ describe('AgentMeshDaemonServer UI API', () => {
     });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath });
+    server = new AgentNetworkDaemonServer({ dbPath });
     const address = await server.listenForTest();
 
     const sessions = await fetchJson<{ items: Array<{ id: string }> }>(`${address.uiBaseUrl}/api/sessions`);
@@ -157,7 +157,7 @@ describe('AgentMeshDaemonServer UI API', () => {
     });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    server = new AgentNetworkDaemonServer({ dbPath, uiPort: 0 });
     const address = await server.listenForTest();
 
     const dashboard = await fetchJson<{
@@ -207,7 +207,7 @@ describe('AgentMeshDaemonServer UI API', () => {
     });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath });
+    server = new AgentNetworkDaemonServer({ dbPath });
     const address = await server.listenForTest();
 
     const stopped = await postJson<{ session: { status: string } }>(
@@ -249,7 +249,7 @@ describe('AgentMeshDaemonServer UI API', () => {
     });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    server = new AgentNetworkDaemonServer({ dbPath, uiPort: 0 });
     const address = await server.listenForTest();
     const stream = await openJsonSseStream(`${address.uiBaseUrl}/api/sessions/${session.id}/messages/stream`);
     const serverStore = (server as any).store as DaemonStore;
@@ -284,7 +284,7 @@ describe('AgentMeshDaemonServer UI API', () => {
     });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    server = new AgentNetworkDaemonServer({ dbPath, uiPort: 0 });
     const address = await server.listenForTest();
 
     const runtime = (server as any).runtime;
@@ -363,7 +363,7 @@ describe('AgentMeshDaemonServer UI API', () => {
   });
 
   it('creates and archives task groups through the ui api', async () => {
-    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    server = new AgentNetworkDaemonServer({ dbPath, uiPort: 0 });
     const address = await server.listenForTest();
 
     const created = await postJson<{ taskGroup: { id: string; title: string; status: string; source: string } }>(
@@ -399,7 +399,7 @@ describe('AgentMeshDaemonServer UI API', () => {
   });
 
   it('creates, updates, removes, and exposes agents through the ui api', async () => {
-    server = new AgentMeshDaemonServer({ dbPath, uiPort: 0 });
+    server = new AgentNetworkDaemonServer({ dbPath, uiPort: 0 });
     const address = await server.listenForTest();
 
     const providerCatalog = await fetchJson<{ items: string[] }>(`${address.uiBaseUrl}/api/providers/catalog`);

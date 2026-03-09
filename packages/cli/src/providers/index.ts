@@ -118,7 +118,7 @@ class AgentsHotProvider implements ProviderRuntime {
 
     const token = loadToken();
     if (!token) {
-      throw new Error('Not authenticated. Run `agent-mesh login` before exposing agents-hot ingress.');
+      throw new Error('Not authenticated. Run `agent-network login` before exposing agents-hot ingress.');
     }
 
     const existing = this.activeIngresses.get(agent.id);

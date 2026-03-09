@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { readFileSync } from 'node:fs';
-import { AgentMeshDaemonServer } from '../daemon/server.js';
+import { AgentNetworkDaemonServer } from '../daemon/server.js';
 import { DaemonStore } from '../daemon/store.js';
 import { getDaemonLogPath } from '../daemon/paths.js';
 import {
@@ -36,14 +36,14 @@ function tailLog(path: string, lines: number): string[] {
 export function registerDaemonCommand(program: Command): void {
   const daemon = program
     .command('daemon')
-    .description('Manage the local agent-mesh daemon');
+    .description('Manage the local agent-network daemon');
 
   daemon
     .command('serve', { hidden: true })
     .description('Internal daemon entrypoint')
     .action(async () => {
       writeDaemonPid(process.pid);
-      const server = new AgentMeshDaemonServer();
+      const server = new AgentNetworkDaemonServer();
       await server.listen();
     });
 
@@ -95,7 +95,7 @@ export function registerDaemonCommand(program: Command): void {
     .action(async () => {
       const status = await getDaemonStatus();
       console.log('');
-      console.log(`  ${BOLD}Agent Mesh Daemon${RESET}`);
+      console.log(`  ${BOLD}Agent Network Daemon${RESET}`);
       console.log('');
       console.log(`  ${GRAY}Running${RESET}    ${status.running ? `${GREEN}yes${RESET}` : 'no'}`);
       console.log(`  ${GRAY}PID${RESET}        ${status.pid ?? '—'}`);

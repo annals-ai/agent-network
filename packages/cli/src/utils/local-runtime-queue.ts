@@ -144,7 +144,7 @@ export class LocalRuntimeQueue implements RuntimeQueueController {
 
   constructor(config: RuntimeQueueConfig, opts: LocalRuntimeQueueOptions = {}) {
     this.config = config;
-    const baseDir = opts.baseDir || join(homedir(), '.agent-mesh');
+    const baseDir = opts.baseDir || join(homedir(), '.agent-network');
     this.runtimeRoot = join(baseDir, 'runtime');
     this.statePath = join(this.runtimeRoot, 'queue-state.json');
     this.lockPath = join(this.runtimeRoot, 'queue.lock');

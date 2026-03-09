@@ -1,29 +1,29 @@
-# Agent Mesh
+# Agent Network
 
-[![npm version](https://img.shields.io/npm/v/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![npm downloads](https://img.shields.io/npm/dm/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![license](https://img.shields.io/github/license/annals-ai/agent-mesh.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
+[![npm downloads](https://img.shields.io/npm/dm/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
+[![license](https://img.shields.io/github/license/annals-ai/agent-network.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
-Agent Mesh 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。它还自带一个由 daemon 启动的本地 Web UI，方便所有者查看 transcript、task、provider 暴露状态和日志，而不需要把完整历史上传到平台。
+Agent Network 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。它还自带一个由 daemon 启动的本地 Web UI，方便所有者查看 transcript、task、provider 暴露状态和日志，而不需要把完整历史上传到平台。
 
 ## 安装
 
 ```bash
-pnpm add -g @annals/agent-mesh
+pnpm add -g @annals/agent-network
 ```
 
 ## 快速开始
 
 ```bash
-agent-mesh login
-agent-mesh daemon start
-agent-mesh ui open
-agent-mesh agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
-agent-mesh chat "Code Reviewer" "Review this repo"
-agent-mesh agent expose "Code Reviewer" --provider agents-hot
-agent-mesh agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
+agent-network login
+agent-network daemon start
+agent-network ui open
+agent-network agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
+agent-network chat "Code Reviewer" "Review this repo"
+agent-network agent expose "Code Reviewer" --provider agents-hot
+agent-network agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## 核心模型
@@ -39,47 +39,47 @@ agent-mesh agent expose "Code Reviewer" --provider generic-a2a --config-json '{"
 
 ## 本地历史界面
 
-- `agent-mesh daemon start` 会同时启动 daemon 和本地 Web UI backend
-- `agent-mesh ui open` 会在浏览器中打开当前本地 Web UI
-- `agent-mesh ui serve` 会确保 daemon 支撑的 Web UI 正在运行，并打印 URL
+- `agent-network daemon start` 会同时启动 daemon 和本地 Web UI backend
+- `agent-network ui open` 会在浏览器中打开当前本地 Web UI
+- `agent-network ui serve` 会确保 daemon 支撑的 Web UI 正在运行，并打印 URL
 - 第一次成功的交互式 daemon 启动会自动打开浏览器
 - Electron 或 Tauri 只是后续包装方向，不在 v1 范围内
 
 ## 主要命令
 
 ```bash
-agent-mesh login
-agent-mesh status
+agent-network login
+agent-network status
 
-agent-mesh daemon start|stop|status|logs
-agent-mesh ui serve|open
+agent-network daemon start|stop|status|logs
+agent-network ui serve|open
 
-agent-mesh agent add --name --project [--sandbox]
-agent-mesh agent list
-agent-mesh agent show <ref>
-agent-mesh agent update <ref>
-agent-mesh agent remove <ref>
-agent-mesh agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
-agent-mesh agent unexpose <ref> --provider agents-hot|generic-a2a
+agent-network agent add --name --project [--sandbox]
+agent-network agent list
+agent-network agent show <ref>
+agent-network agent update <ref>
+agent-network agent remove <ref>
+agent-network agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+agent-network agent unexpose <ref> --provider agents-hot|generic-a2a
 
-agent-mesh task create --title "..."
-agent-mesh task list
-agent-mesh task show <id>
-agent-mesh task archive <id>
+agent-network task create --title "..."
+agent-network task list
+agent-network task show <id>
+agent-network task archive <id>
 
-agent-mesh session list
-agent-mesh session show <id>
-agent-mesh session attach <id> [message]
-agent-mesh session fork <id>
-agent-mesh session stop <id>
-agent-mesh session archive <id>
+agent-network session list
+agent-network session show <id>
+agent-network session attach <id> [message]
+agent-network session fork <id>
+agent-network session stop <id>
+agent-network session archive <id>
 
-agent-mesh chat <agent> [message]
-agent-mesh call <agent> --task "..."
-agent-mesh discover --capability <keyword>
-agent-mesh skills ...
-agent-mesh subscribe ...
-agent-mesh profile ...
+agent-network chat <agent> [message]
+agent-network call <agent> --task "..."
+agent-network discover --capability <keyword>
+agent-network skills ...
+agent-network subscribe ...
+agent-network profile ...
 ```
 
 ## 沙箱
@@ -95,15 +95,15 @@ agent-mesh profile ...
 
 ```bash
 # 暴露到 Agents Hot
-agent-mesh agent expose "Code Reviewer" --provider agents-hot
+agent-network agent expose "Code Reviewer" --provider agents-hot
 
 # 在本机 HTTP 端口上暴露标准 Generic A2A 入口
-agent-mesh agent expose "Code Reviewer" \
+agent-network agent expose "Code Reviewer" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
 # 查看生成出来的 card / jsonrpc / health URL
-agent-mesh agent show "Code Reviewer" --json
+agent-network agent show "Code Reviewer" --json
 ```
 
 ## 开发
@@ -118,7 +118,7 @@ pnpm lint
 ## 仓库结构
 
 ```txt
-agent-mesh/
+agent-network/
 ├── packages/
 │   ├── cli/       # daemon-first CLI
 │   ├── ui/        # 本地 Web UI workspace

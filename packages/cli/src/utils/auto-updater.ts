@@ -4,7 +4,7 @@ import { log } from './logger.js';
 export const AUTO_UPGRADE_ENV = 'AGENT_MESH_AUTO_UPGRADE';
 export const AUTO_UPGRADE_RELAUNCH_ENV = 'AGENT_MESH_AUTO_UPGRADE_RELAUNCHED';
 
-const PACKAGE_NAME = '@annals/agent-mesh';
+const PACKAGE_NAME = '@annals/agent-network';
 const CHECK_TIMEOUT_MS = 5_000;
 const INSTALL_TIMEOUT_MS = 120_000;
 

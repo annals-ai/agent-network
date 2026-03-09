@@ -2,7 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-const ROOT_DIR = join(homedir(), '.agent-mesh');
+const ROOT_DIR = join(homedir(), '.agent-network');
 const DAEMON_DIR = join(ROOT_DIR, 'daemon');
 const LOG_DIR = join(DAEMON_DIR, 'logs');
 const DAEMON_UI_HOST = '127.0.0.1';
@@ -21,7 +21,7 @@ export function ensureDaemonDirs(): void {
   ensureDir(LOG_DIR);
 }
 
-export function getAgentMeshRootDir(): string {
+export function getAgentNetworkRootDir(): string {
   ensureDaemonDirs();
   return ROOT_DIR;
 }

@@ -1,7 +1,7 @@
 import type { BridgeErrorCode } from './errors.js';
 
 // ============================================================
-// Bridge → Platform (sent by agent-mesh CLI to Bridge Worker)
+// Bridge → Platform (sent by agent-network CLI to Bridge Worker)
 // ============================================================
 
 /** Sent immediately after WebSocket connection to authenticate */
@@ -90,7 +90,7 @@ export interface RtcSignal {
 export type BridgeToWorkerMessage = Register | Chunk | Done | BridgeError | Heartbeat | DiscoverAgents | CallAgent | RtcSignal;
 
 // ============================================================
-// Platform → Bridge (sent by Bridge Worker to agent-mesh CLI)
+// Platform → Bridge (sent by Bridge Worker to agent-network CLI)
 // ============================================================
 
 /** Registration acknowledgment */

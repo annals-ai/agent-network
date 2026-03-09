@@ -7,7 +7,7 @@ Skills use **author-scoped naming**: `author/slug` (like npm `@scope/package`). 
 ## 1. Initialize
 
 ```bash
-agent-mesh skills init [path] --name <name> --description "What this skill does"
+agent-network skills init [path] --name <name> --description "What this skill does"
 ```
 
 Creates a `SKILL.md` template with YAML frontmatter. If a `SKILL.md` with a `name` in frontmatter already exists, skips without modification.
@@ -19,10 +19,10 @@ Edit `SKILL.md` with the skill content. Add supporting files (e.g. `references/`
 ## 3. Version
 
 ```bash
-agent-mesh skills version patch [path]     # 1.0.0 → 1.0.1
-agent-mesh skills version minor [path]     # 1.0.0 → 1.1.0
-agent-mesh skills version major [path]     # 1.0.0 → 2.0.0
-agent-mesh skills version 2.5.0 [path]    # Set exact version
+agent-network skills version patch [path]     # 1.0.0 → 1.0.1
+agent-network skills version minor [path]     # 1.0.0 → 1.1.0
+agent-network skills version major [path]     # 1.0.0 → 2.0.0
+agent-network skills version 2.5.0 [path]    # Set exact version
 ```
 
 Version is read from and written to the `version` field in SKILL.md frontmatter.
@@ -30,13 +30,13 @@ Version is read from and written to the `version` field in SKILL.md frontmatter.
 ## 4. Pack (optional preview)
 
 ```bash
-agent-mesh skills pack [path]              # Creates {name}-{version}.zip locally
+agent-network skills pack [path]              # Creates {name}-{version}.zip locally
 ```
 
 ## 5. Publish
 
 ```bash
-agent-mesh skills publish [path]           # Pack + upload to agents.hot
+agent-network skills publish [path]           # Pack + upload to agents.hot
 ```
 
 Flags: `--stdin` (pipe SKILL.md content), `--name` (override), `--version` (override), `--private`.
@@ -46,20 +46,20 @@ Output includes `author_login` and URL in format: `https://agents.hot/authors/{a
 ## 6. Manage
 
 ```bash
-agent-mesh skills info <author/slug>       # View remote details
-agent-mesh skills list                     # List your published skills
-agent-mesh skills unpublish <author/slug>  # Remove from platform
+agent-network skills info <author/slug>       # View remote details
+agent-network skills list                     # List your published skills
+agent-network skills unpublish <author/slug>  # Remove from platform
 ```
 
 ## 7. Install & Update
 
 ```bash
-agent-mesh skills install <author/slug> [path]   # Install to .claude/skills/
-agent-mesh skills install <author/slug> --force   # Overwrite existing
-agent-mesh skills update [author/slug] [path]     # Update one or all installed skills
-agent-mesh skills remove <slug> [path]            # Remove locally installed skill
-agent-mesh skills installed [path]                # List installed skills
-agent-mesh skills installed --check-updates       # Check for available updates
+agent-network skills install <author/slug> [path]   # Install to .claude/skills/
+agent-network skills install <author/slug> --force   # Overwrite existing
+agent-network skills update [author/slug] [path]     # Update one or all installed skills
+agent-network skills remove <slug> [path]            # Remove locally installed skill
+agent-network skills installed [path]                # List installed skills
+agent-network skills installed --check-updates       # Check for available updates
 ```
 
 Install downloads skills to `.claude/skills/<slug>/` (or `.agents/skills/<slug>/` if that convention exists).

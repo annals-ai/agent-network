@@ -1,4 +1,4 @@
-# Agent Mesh — Protocol Reference
+# Agent Network — Protocol Reference
 
 Bridge Protocol v1: JSON messages over WebSocket, plus HTTP relay API.
 
@@ -17,7 +17,7 @@ Bridge Protocol v1: JSON messages over WebSocket, plus HTTP relay API.
 
 ## CLI → Worker Messages (Uplink)
 
-8 message types sent from the agent-mesh CLI to the Bridge Worker via WebSocket.
+8 message types sent from the agent-network CLI to the Bridge Worker via WebSocket.
 
 | Type | Purpose | Key Fields |
 |------|---------|------------|

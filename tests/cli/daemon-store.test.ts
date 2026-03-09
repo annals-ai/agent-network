@@ -10,7 +10,7 @@ describe('DaemonStore', () => {
   let store: DaemonStore;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-mesh-daemon-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-daemon-'));
     store = new DaemonStore(join(tempDir, 'state.db'));
   });
 
@@ -175,7 +175,7 @@ describe('buildPromptFromHistory', () => {
       },
     ], 'Now turn it into release notes.');
 
-    expect(prompt).toContain('Continue the existing agent-mesh local session');
+    expect(prompt).toContain('Continue the existing agent-network local session');
     expect(prompt).toContain('Summarize the changelog.');
     expect(prompt).toContain('The main change is the new daemon runtime.');
     expect(prompt).toContain('Now turn it into release notes.');

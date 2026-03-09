@@ -1,10 +1,10 @@
 {
-  "name": "@annals/agent-mesh",
+  "name": "@annals/agent-network",
   "version": "0.22.0",
   "description": "CLI bridge connecting local AI agents to the Agents.Hot platform",
   "type": "module",
   "bin": {
-    "agent-mesh": "dist/index.js"
+    "agent-network": "dist/index.js"
   },
   "main": "./dist/index.js",
   "engines": {
@@ -34,11 +34,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/annals-ai/agent-mesh.git",
+    "url": "git+https://github.com/annals-ai/agent-network.git",
     "directory": "packages/cli"
   },
-  "homepage": "https://github.com/annals-ai/agent-mesh#readme",
+  "homepage": "https://github.com/annals-ai/agent-network#readme",
   "bugs": {
-    "url": "https://github.com/annals-ai/agent-mesh/issues"
+    "url": "https://github.com/annals-ai/agent-network/issues"
   }
 }

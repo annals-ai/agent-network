@@ -1,30 +1,30 @@
 # Getting Started
 
-Agent Mesh now runs around a single local daemon.
+Agent Network now runs around a single local daemon.
 
 ## Install
 
 ```bash
-pnpm add -g @annals/agent-mesh
+pnpm add -g @annals/agent-network
 ```
 
 ## Log In
 
 ```bash
-agent-mesh login
+agent-network login
 ```
 
 ## Start the Daemon
 
 ```bash
-agent-mesh daemon start
-agent-mesh daemon status
+agent-network daemon start
+agent-network daemon status
 ```
 
 ## Add a Local Agent
 
 ```bash
-agent-mesh agent add \
+agent-network agent add \
   --name "Code Reviewer" \
   --project /path/to/project \
   --runtime-type claude
@@ -35,7 +35,7 @@ agent-mesh agent add \
 Persona injects a role prefix into every prompt sent to the agent:
 
 ```bash
-agent-mesh agent add \
+agent-network agent add \
   --name "Skeptic" \
   --project /path/to/project \
   --persona "You are a skeptical code reviewer. Challenge every assumption."
@@ -44,7 +44,7 @@ agent-mesh agent add \
 ### Using Codex Runtime
 
 ```bash
-agent-mesh agent add \
+agent-network agent add \
   --name "Codex Agent" \
   --project /path/to/project \
   --runtime-type codex
@@ -55,8 +55,8 @@ Requires `OPENAI_API_KEY` in environment.
 ## Chat Locally
 
 ```bash
-agent-mesh chat "Code Reviewer" "Review the current repository"
-agent-mesh session list --agent "Code Reviewer"
+agent-network chat "Code Reviewer" "Review the current repository"
+agent-network session list --agent "Code Reviewer"
 ```
 
 ## Fan-Out (Multi-Agent)
@@ -64,7 +64,7 @@ agent-mesh session list --agent "Code Reviewer"
 Run the same task across multiple agents in parallel:
 
 ```bash
-agent-mesh fan-out \
+agent-network fan-out \
   --task "Review the latest git diff" \
   --agents "skeptic,architect" \
   --stream
@@ -73,7 +73,7 @@ agent-mesh fan-out \
 With a synthesizer agent to produce a combined verdict:
 
 ```bash
-agent-mesh fan-out \
+agent-network fan-out \
   --task "Review the latest git diff" \
   --agents "skeptic,architect,minimalist" \
   --synthesizer "lead-reviewer" \
@@ -83,7 +83,7 @@ agent-mesh fan-out \
 ## Expose Online
 
 ```bash
-agent-mesh agent expose "Code Reviewer" --provider agents-hot
+agent-network agent expose "Code Reviewer" --provider agents-hot
 ```
 
 The daemon remains the owner of local sessions. Provider exposure only adds online ingress.
@@ -91,7 +91,7 @@ The daemon remains the owner of local sessions. Provider exposure only adds onli
 ## Local Web UI
 
 ```bash
-agent-mesh daemon ui
+agent-network daemon ui
 ```
 
 Opens a browser-based dashboard for managing agents, sessions, tasks, and logs.

@@ -3,7 +3,7 @@ import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AgentMeshDaemonServer } from '../../packages/cli/src/daemon/server.js';
+import { AgentNetworkDaemonServer } from '../../packages/cli/src/daemon/server.js';
 import { DaemonStore } from '../../packages/cli/src/daemon/store.js';
 import { parseSseChunk } from '../../packages/cli/src/utils/sse-parser.js';
 
@@ -97,12 +97,12 @@ async function openJsonSseStream(url: string): Promise<{
   };
 }
 
-describe('AgentMeshDaemonServer UI', () => {
+describe('AgentNetworkDaemonServer UI', () => {
   let tempDir: string;
-  let server: AgentMeshDaemonServer | null = null;
+  let server: AgentNetworkDaemonServer | null = null;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-mesh-daemon-ui-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-daemon-ui-'));
   });
 
   afterEach(async () => {
@@ -111,7 +111,7 @@ describe('AgentMeshDaemonServer UI', () => {
   });
 
   it('serves a local ui health endpoint', async () => {
-    server = new AgentMeshDaemonServer({
+    server = new AgentNetworkDaemonServer({
       dbPath: join(tempDir, 'state.db'),
     });
 
@@ -127,7 +127,7 @@ describe('AgentMeshDaemonServer UI', () => {
     const stopHook = vi.fn();
     const restartHook = vi.fn();
 
-    server = new AgentMeshDaemonServer({
+    server = new AgentNetworkDaemonServer({
       dbPath: join(tempDir, 'state.db'),
       uiControlHooks: {
         stop: stopHook,
@@ -171,7 +171,7 @@ describe('AgentMeshDaemonServer UI', () => {
     store.setDaemonSetting('ui.last_port', { value: preferredPort });
     store.close();
 
-    server = new AgentMeshDaemonServer({ dbPath });
+    server = new AgentNetworkDaemonServer({ dbPath });
     const address = await server.listenForTest();
 
     expect(address.uiPort).toBe(preferredPort);
@@ -181,7 +181,7 @@ describe('AgentMeshDaemonServer UI', () => {
     const dbPath = join(tempDir, 'state.db');
     const logPath = join(tempDir, 'daemon.log');
 
-    server = new AgentMeshDaemonServer({
+    server = new AgentNetworkDaemonServer({
       dbPath,
       logPath,
       uiPort: 0,

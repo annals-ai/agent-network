@@ -1,4 +1,4 @@
-# Agent Mesh — Architecture Deep Dive
+# Agent Network — Architecture Deep Dive
 
 ## System Overview
 
@@ -120,7 +120,7 @@ sandbox 不决定 session 归属。
 以下已经不是当前主架构：
 
 - `connect-ticket`
-- `agent-mesh connect`
+- `agent-network connect`
 - 每个 agent 一个单独后台进程
 - MCP 作为平台主入口
 

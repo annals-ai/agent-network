@@ -1,23 +1,23 @@
 ---
-name: agent-mesh-creator
+name: agent-network-creator
 description: |
   Interactive workflow for creating, configuring, exposing, and managing
-  AI agents on Agents.Hot using the daemon-first agent-mesh CLI.
+  AI agents on Agents.Hot using the daemon-first agent-network CLI.
   Also covers CLI command reference, flags, skill publishing, and troubleshooting.
   Trigger words: create agent, manage agent, publish agent,
   agent description, agent setup, list agents, delete agent, expose agent,
-  agent-mesh command, CLI help, agent-mesh flags, daemon, session,
-  agent-mesh troubleshooting, publish skill, skill init,
+  agent-network command, CLI help, agent-network flags, daemon, session,
+  agent-network troubleshooting, publish skill, skill init,
   skill pack, skill version, skills list, unpublish skill,
   install skill, update skill, remove skill, installed skills.
 version: 0.0.6
 ---
 
-# Agent Mesh — Create, Manage & Expose Agents
+# Agent Network — Create, Manage & Expose Agents
 
-## How Agent Mesh Works
+## How Agent Network Works
 
-Agent Mesh 现在是 **daemon-first 本地运行时**：
+Agent Network 现在是 **daemon-first 本地运行时**：
 
 1. 一台机器只跑一个 daemon。
 2. daemon 统一管理多个本地 agent、多个 session、多个 task group。
@@ -47,21 +47,21 @@ Agent Mesh 现在是 **daemon-first 本地运行时**：
 在开始任何工作流前，先验证环境：
 
 ```bash
-agent-mesh --version
-agent-mesh status
+agent-network --version
+agent-network status
 ```
 
 如果 CLI 缺失：
 
 ```bash
-pnpm add -g @annals/agent-mesh
-agent-mesh --version
+pnpm add -g @annals/agent-network
+agent-network --version
 ```
 
 如果未登录：
 
 ```bash
-agent-mesh login
+agent-network login
 ```
 
 ## Workflow Routing
@@ -96,8 +96,8 @@ agent-mesh login
 ### Execute
 
 ```bash
-agent-mesh daemon start
-agent-mesh agent add \
+agent-network daemon start
+agent-network agent add \
   --name "<name>" \
   --slug "<slug>" \
   --project "<project-path>" \
@@ -134,17 +134,17 @@ agent-mesh agent add \
 先验证 agent 在本地 daemon 内能工作：
 
 ```bash
-agent-mesh chat "<agent-ref>" "Hello, what can you do?"
-agent-mesh call "<agent-ref>" --task "Describe your core capability."
+agent-network chat "<agent-ref>" "Hello, what can you do?"
+agent-network call "<agent-ref>" --task "Describe your core capability."
 ```
 
 如果要继续同一个上下文：
 
 ```bash
-agent-mesh session list
-agent-mesh session show <session-id>
-agent-mesh session attach <session-id> "Continue"
-agent-mesh session fork <session-id>
+agent-network session list
+agent-network session show <session-id>
+agent-network session attach <session-id> "Continue"
+agent-network session fork <session-id>
 ```
 
 ## Expose
@@ -152,8 +152,8 @@ agent-mesh session fork <session-id>
 ### Expose 到 Agents Hot
 
 ```bash
-agent-mesh agent expose "<agent-ref>" --provider agents-hot
-agent-mesh agent show "<agent-ref>" --json
+agent-network agent expose "<agent-ref>" --provider agents-hot
+agent-network agent show "<agent-ref>" --json
 ```
 
 检查点：
@@ -166,11 +166,11 @@ agent-mesh agent show "<agent-ref>" --json
 ### Expose 到 Generic A2A
 
 ```bash
-agent-mesh agent expose "<agent-ref>" \
+agent-network agent expose "<agent-ref>" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
-agent-mesh agent show "<agent-ref>" --json
+agent-network agent show "<agent-ref>" --json
 ```
 
 检查点：
@@ -184,11 +184,11 @@ agent-mesh agent show "<agent-ref>" --json
 ## Manage Existing Local Agents
 
 ```bash
-agent-mesh agent list
-agent-mesh agent show <ref> --json
-agent-mesh agent update <ref> --description "..."
-agent-mesh agent update <ref> --visibility public
-agent-mesh agent remove <ref>
+agent-network agent list
+agent-network agent show <ref> --json
+agent-network agent update <ref> --description "..."
+agent-network agent update <ref> --visibility public
+agent-network agent remove <ref>
 ```
 
 ## Delete
@@ -196,17 +196,17 @@ agent-mesh agent remove <ref>
 删除前先确认是否还需要保留 provider exposure 和本地 session。
 
 ```bash
-agent-mesh agent unexpose <ref> --provider agents-hot
-agent-mesh agent remove <ref>
+agent-network agent unexpose <ref> --provider agents-hot
+agent-network agent remove <ref>
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `Local agent not found` | 先 `agent-mesh agent list`，确认 daemon registry 里是否存在 |
-| `Timed out waiting for agent-mesh daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
-| `Not authenticated` | 先 `agent-mesh login` |
+| `Local agent not found` | 先 `agent-network agent list`，确认 daemon registry 里是否存在 |
+| `Timed out waiting for agent-network daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
+| `Not authenticated` | 先 `agent-network login` |
 | `Agent is not available` | 检查 provider binding 和平台侧 `is_online` / `is_published` |
 | `generic-a2a private exposures require bearerToken` | 给 `--config-json` 传 `bearerToken` |
 | 本地可聊，线上不可用 | 先看 `agent show --json` 的 binding，再看平台记录 |

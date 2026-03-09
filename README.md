@@ -1,29 +1,29 @@
-# Agent Mesh
+# Agent Network
 
-[![npm version](https://img.shields.io/npm/v/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![npm downloads](https://img.shields.io/npm/dm/@annals/agent-mesh.svg)](https://www.npmjs.com/package/@annals/agent-mesh)
-[![license](https://img.shields.io/github/license/annals-ai/agent-mesh.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
+[![npm downloads](https://img.shields.io/npm/dm/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
+[![license](https://img.shields.io/github/license/annals-ai/agent-network.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
-Agent Mesh is now a daemon-first local runtime for managing many agents and many sessions on one machine, with optional provider exposure such as Agents Hot. It also ships a local Web UI, started by the daemon, so owners can inspect transcripts, tasks, exposure state, and logs without pushing full history to the platform.
+Agent Network is now a daemon-first local runtime for managing many agents and many sessions on one machine, with optional provider exposure such as Agents Hot. It also ships a local Web UI, started by the daemon, so owners can inspect transcripts, tasks, exposure state, and logs without pushing full history to the platform.
 
 ## Install
 
 ```bash
-pnpm add -g @annals/agent-mesh
+pnpm add -g @annals/agent-network
 ```
 
 ## Quickstart
 
 ```bash
-agent-mesh login
-agent-mesh daemon start
-agent-mesh ui open
-agent-mesh agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
-agent-mesh chat "Code Reviewer" "Review this repo"
-agent-mesh agent expose "Code Reviewer" --provider agents-hot
-agent-mesh agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
+agent-network login
+agent-network daemon start
+agent-network ui open
+agent-network agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
+agent-network chat "Code Reviewer" "Review this repo"
+agent-network agent expose "Code Reviewer" --provider agents-hot
+agent-network agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## Core Model
@@ -39,47 +39,47 @@ The daemon owns local state in SQLite. Full transcript history stays local to th
 
 ## Local History Surface
 
-- `agent-mesh daemon start` starts both the daemon and the local Web UI backend
-- `agent-mesh ui open` opens the current local Web UI in your browser
-- `agent-mesh ui serve` ensures the daemon-backed Web UI is running and prints the URL
-- On the first successful interactive daemon launch, Agent Mesh opens the Web UI automatically
+- `agent-network daemon start` starts both the daemon and the local Web UI backend
+- `agent-network ui open` opens the current local Web UI in your browser
+- `agent-network ui serve` ensures the daemon-backed Web UI is running and prints the URL
+- On the first successful interactive daemon launch, Agent Network opens the Web UI automatically
 - Electron or Tauri can wrap this local Web UI later, but that is not part of v1
 
 ## Main Commands
 
 ```bash
-agent-mesh login
-agent-mesh status
+agent-network login
+agent-network status
 
-agent-mesh daemon start|stop|status|logs
-agent-mesh ui serve|open
+agent-network daemon start|stop|status|logs
+agent-network ui serve|open
 
-agent-mesh agent add --name --project [--sandbox]
-agent-mesh agent list
-agent-mesh agent show <ref>
-agent-mesh agent update <ref>
-agent-mesh agent remove <ref>
-agent-mesh agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
-agent-mesh agent unexpose <ref> --provider agents-hot|generic-a2a
+agent-network agent add --name --project [--sandbox]
+agent-network agent list
+agent-network agent show <ref>
+agent-network agent update <ref>
+agent-network agent remove <ref>
+agent-network agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+agent-network agent unexpose <ref> --provider agents-hot|generic-a2a
 
-agent-mesh task create --title "..."
-agent-mesh task list
-agent-mesh task show <id>
-agent-mesh task archive <id>
+agent-network task create --title "..."
+agent-network task list
+agent-network task show <id>
+agent-network task archive <id>
 
-agent-mesh session list
-agent-mesh session show <id>
-agent-mesh session attach <id> [message]
-agent-mesh session fork <id>
-agent-mesh session stop <id>
-agent-mesh session archive <id>
+agent-network session list
+agent-network session show <id>
+agent-network session attach <id> [message]
+agent-network session fork <id>
+agent-network session stop <id>
+agent-network session archive <id>
 
-agent-mesh chat <agent> [message]
-agent-mesh call <agent> --task "..."
-agent-mesh discover --capability <keyword>
-agent-mesh skills ...
-agent-mesh subscribe ...
-agent-mesh profile ...
+agent-network chat <agent> [message]
+agent-network call <agent> --task "..."
+agent-network discover --capability <keyword>
+agent-network skills ...
+agent-network subscribe ...
+agent-network profile ...
 ```
 
 ## Sandbox
@@ -87,7 +87,7 @@ agent-mesh profile ...
 Sandbox is now explicit and optional.
 
 - Without sandbox: the agent works directly inside `--project`
-- With sandbox: Agent Mesh creates an isolated workspace and enables file-oriented flows
+- With sandbox: Agent Network creates an isolated workspace and enables file-oriented flows
 
 Session ownership does not depend on sandbox mode.
 
@@ -95,15 +95,15 @@ Session ownership does not depend on sandbox mode.
 
 ```bash
 # Agents Hot ingress
-agent-mesh agent expose "Code Reviewer" --provider agents-hot
+agent-network agent expose "Code Reviewer" --provider agents-hot
 
 # Generic A2A ingress on a local HTTP port
-agent-mesh agent expose "Code Reviewer" \
+agent-network agent expose "Code Reviewer" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
 # Inspect generated URLs
-agent-mesh agent show "Code Reviewer" --json
+agent-network agent show "Code Reviewer" --json
 ```
 
 ## Development
@@ -118,7 +118,7 @@ pnpm lint
 ## Repository Layout
 
 ```txt
-agent-mesh/
+agent-network/
 ├── packages/
 │   ├── cli/       # daemon-first CLI
 │   ├── ui/        # local Web UI workspace

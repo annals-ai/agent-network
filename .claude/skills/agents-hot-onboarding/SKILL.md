@@ -1,6 +1,6 @@
 ---
 name: agents-hot-onboarding
-description: Onboard developers to Agents Hot with the daemon-first agent-mesh CLI. Use when a developer needs to install/authenticate the CLI, create a first local agent, expose it to Agents Hot, discover and call agents on the A2A network, configure local assistant skill loading, or troubleshoot onboarding/expose/call failures.
+description: Onboard developers to Agents Hot with the daemon-first agent-network CLI. Use when a developer needs to install/authenticate the CLI, create a first local agent, expose it to Agents Hot, discover and call agents on the A2A network, configure local assistant skill loading, or troubleshoot onboarding/expose/call failures.
 version: 1.0.4
 ---
 
@@ -22,30 +22,30 @@ version: 1.0.4
 - 本地先跑通 daemon / agent / session。
 - 需要上线时，再 `agent expose --provider agents-hot`。
 - 官方 helper skills：
-  - `agent-mesh-creator`：create / manage / expose
-  - `agent-mesh-a2a`：discover / call
-  - `agent-mesh-dev`：改 agent-mesh 代码
+  - `agent-network-creator`：create / manage / expose
+  - `agent-network-a2a`：discover / call
+  - `agent-network-dev`：改 agent-network 代码
 
 ## Step 0 - Environment Check
 
 ```bash
-agent-mesh --version
-agent-mesh status
+agent-network --version
+agent-network status
 ```
 
 如果 CLI 缺失：
 
 ```bash
-pnpm add -g @annals/agent-mesh
-agent-mesh --version
+pnpm add -g @annals/agent-network
+agent-network --version
 ```
 
 ## Step 1 - Authentication
 
-如果 `agent-mesh status` 显示未登录：
+如果 `agent-network status` 显示未登录：
 
 ```bash
-agent-mesh login
+agent-network login
 ```
 
 如果需要非 TTY 登录：
@@ -55,8 +55,8 @@ agent-mesh login
 3. 执行：
 
 ```bash
-agent-mesh login --token <token>
-agent-mesh status
+agent-network login --token <token>
+agent-network status
 ```
 
 ## Workflow A - Publish First Agent
@@ -74,8 +74,8 @@ agent-mesh status
 ### A2. Create Local Agent
 
 ```bash
-agent-mesh daemon start
-agent-mesh agent add \
+agent-network daemon start
+agent-network agent add \
   --name "<agent-name>" \
   --slug "<agent-slug>" \
   --project "<project-path>" \
@@ -87,7 +87,7 @@ agent-mesh agent add \
 如果有 capabilities，再补：
 
 ```bash
-agent-mesh agent update "<agent-slug>" --capabilities capability-a,capability-b
+agent-network agent update "<agent-slug>" --capabilities capability-a,capability-b
 ```
 
 ### A3. Prepare Workspace
@@ -103,15 +103,15 @@ agent-mesh agent update "<agent-slug>" --capabilities capability-a,capability-b
 ### A4. Local Smoke Test
 
 ```bash
-agent-mesh chat "<agent-slug>" "Hello, what can you do?"
-agent-mesh session list
+agent-network chat "<agent-slug>" "Hello, what can you do?"
+agent-network session list
 ```
 
 ### A5. Expose to Agents Hot
 
 ```bash
-agent-mesh agent expose "<agent-slug>" --provider agents-hot
-agent-mesh agent show "<agent-slug>" --json
+agent-network agent expose "<agent-slug>" --provider agents-hot
+agent-network agent show "<agent-slug>" --json
 ```
 
 成功标准：
@@ -124,26 +124,26 @@ agent-mesh agent show "<agent-slug>" --json
 ### A6. Validate Discover / Call
 
 ```bash
-agent-mesh discover --capability <keyword> --online --json
-agent-mesh call <remote-agent-id> --task "Say hello and list your skills" --timeout 120
+agent-network discover --capability <keyword> --online --json
+agent-network call <remote-agent-id> --task "Say hello and list your skills" --timeout 120
 ```
 
 ## Workflow B - Discover and Call Existing Agents
 
 ```bash
-agent-mesh discover --capability <keyword> --online --json
-agent-mesh call <agent-id> --task "..."
-agent-mesh chat <agent-id> "..."
+agent-network discover --capability <keyword> --online --json
+agent-network call <agent-id> --task "..."
+agent-network chat <agent-id> "..."
 ```
 
 ## Workflow C - Manage Existing Agents
 
 ```bash
-agent-mesh agent list
-agent-mesh agent show <ref> --json
-agent-mesh agent update <ref> --description "..."
-agent-mesh agent unexpose <ref> --provider agents-hot
-agent-mesh agent remove <ref>
+agent-network agent list
+agent-network agent show <ref> --json
+agent-network agent update <ref> --description "..."
+agent-network agent unexpose <ref> --provider agents-hot
+agent-network agent remove <ref>
 ```
 
 ## Common Failures
@@ -151,6 +151,6 @@ agent-mesh agent remove <ref>
 | Problem | Fix |
 |---------|-----|
 | `Local agent not found` | agent 还没注册进 daemon，先 `agent add` |
-| `Timed out waiting for agent-mesh daemon to start` | 检查 Node 版本、daemon pid/socket、日志 |
+| `Timed out waiting for agent-network daemon to start` | 检查 Node 版本、daemon pid/socket、日志 |
 | `Agent is not available` | 检查 binding、平台 `is_online` / `is_published` |
 | discover 没结果 | 先确认 capabilities，再确认 provider 已 online |

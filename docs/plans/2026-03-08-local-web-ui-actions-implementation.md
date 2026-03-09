@@ -6,7 +6,7 @@
 
 **Architecture:** Reuse existing daemon methods wherever they already exist (`runtime.chat`, `session.attach`, `task.create`, `task.archive`) and expose them through the local UI HTTP API. Add a small set of shadcn-based control surfaces to the existing dashboard rather than introducing a new page or router. For daemon stop/restart, add explicit HTTP actions that coordinate a graceful shutdown and background restart from the current process model.
 
-**Tech Stack:** TypeScript, React 19, Vite, shadcn/ui, agent-mesh local daemon, Vitest, agent-browser, pnpm
+**Tech Stack:** TypeScript, React 19, Vite, shadcn/ui, agent-network local daemon, Vitest, agent-browser, pnpm
 
 ---
 
@@ -30,7 +30,7 @@ Add a UI API test that:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
+Run: `pnpm -C agent-network test -- tests/cli/ui-api.test.ts`
 
 **Step 3: Write minimal implementation**
 
@@ -44,14 +44,14 @@ Run: `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
 **Step 4: Run tests to verify it passes**
 
 Run:
-- `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
-- `pnpm -C agent-mesh build`
+- `pnpm -C agent-network test -- tests/cli/ui-api.test.ts`
+- `pnpm -C agent-network build`
 
 **Step 5: Commit**
 
 ```bash
-git -C agent-mesh add tests/cli/ui-api.test.ts packages/cli/src/ui/api-routes.ts packages/ui/src/api.ts packages/ui/src/App.tsx packages/ui/src/components/TranscriptPanel.tsx packages/ui/src/lib/i18n.tsx
-git -C agent-mesh commit -m "feat: add local ui session composer"
+git -C agent-network add tests/cli/ui-api.test.ts packages/cli/src/ui/api-routes.ts packages/ui/src/api.ts packages/ui/src/App.tsx packages/ui/src/components/TranscriptPanel.tsx packages/ui/src/lib/i18n.tsx
+git -C agent-network commit -m "feat: add local ui session composer"
 ```
 
 ### Task 2: Task Group Actions
@@ -73,7 +73,7 @@ Add a UI API test that:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
+Run: `pnpm -C agent-network test -- tests/cli/ui-api.test.ts`
 
 **Step 3: Write minimal implementation**
 
@@ -85,14 +85,14 @@ Run: `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
 **Step 4: Run tests to verify it passes**
 
 Run:
-- `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts`
-- `pnpm -C agent-mesh build`
+- `pnpm -C agent-network test -- tests/cli/ui-api.test.ts`
+- `pnpm -C agent-network build`
 
 **Step 5: Commit**
 
 ```bash
-git -C agent-mesh add tests/cli/ui-api.test.ts packages/cli/src/ui/api-routes.ts packages/ui/src/api.ts packages/ui/src/App.tsx packages/ui/src/components/TasksPanel.tsx packages/ui/src/lib/i18n.tsx
-git -C agent-mesh commit -m "feat: add local ui task actions"
+git -C agent-network add tests/cli/ui-api.test.ts packages/cli/src/ui/api-routes.ts packages/ui/src/api.ts packages/ui/src/App.tsx packages/ui/src/components/TasksPanel.tsx packages/ui/src/lib/i18n.tsx
+git -C agent-network commit -m "feat: add local ui task actions"
 ```
 
 ### Task 3: Daemon Stop And Restart Controls
@@ -117,7 +117,7 @@ Add focused tests that:
 **Step 2: Run test to verify it fails**
 
 Run:
-- `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
+- `pnpm -C agent-network test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
 
 **Step 3: Write minimal implementation**
 
@@ -129,14 +129,14 @@ Run:
 **Step 4: Run tests to verify it passes**
 
 Run:
-- `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
-- `pnpm -C agent-mesh build`
+- `pnpm -C agent-network test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
+- `pnpm -C agent-network build`
 
 **Step 5: Commit**
 
 ```bash
-git -C agent-mesh add tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts packages/cli/src/ui/api-routes.ts packages/cli/src/daemon/process.ts packages/ui/src/api.ts packages/ui/src/components/AppShell.tsx packages/ui/src/App.tsx packages/ui/src/lib/i18n.tsx
-git -C agent-mesh commit -m "feat: add local ui daemon controls"
+git -C agent-network add tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts packages/cli/src/ui/api-routes.ts packages/cli/src/daemon/process.ts packages/ui/src/api.ts packages/ui/src/components/AppShell.tsx packages/ui/src/App.tsx packages/ui/src/lib/i18n.tsx
+git -C agent-network commit -m "feat: add local ui daemon controls"
 ```
 
 ### Task 4: Browser Smoke Validation
@@ -157,16 +157,16 @@ Use `agent-browser` against the running local UI to verify:
 **Step 2: Fix regressions if found**
 
 - If a bug appears, add the smallest fix and rerun the relevant test
-- Re-run `pnpm -C agent-mesh build`
+- Re-run `pnpm -C agent-network build`
 
 **Step 3: Final verification**
 
 Run:
-- `pnpm -C agent-mesh build`
-- `pnpm -C agent-mesh test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
+- `pnpm -C agent-network build`
+- `pnpm -C agent-network test -- tests/cli/ui-api.test.ts tests/cli/daemon-ui.test.ts`
 
 **Step 4: Commit**
 
 ```bash
-git -C agent-mesh commit --allow-empty -m "test: verify local ui action flows"
+git -C agent-network commit --allow-empty -m "test: verify local ui action flows"
 ```

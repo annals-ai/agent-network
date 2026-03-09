@@ -24,7 +24,7 @@ import { createUiApiHandler } from '../ui/api-routes.js';
 import { startUiHttpServer, type UiHttpServerHandle } from '../ui/http-server.js';
 import { removeDaemonPid, scheduleDaemonRestartFromCurrentProcess } from './process.js';
 
-interface AgentMeshDaemonServerOptions {
+interface AgentNetworkDaemonServerOptions {
   dbPath?: string;
   logPath?: string;
   uiHost?: string;
@@ -57,7 +57,7 @@ function normalizeTags(value: unknown): string[] {
   return value.map((item) => String(item).trim()).filter(Boolean);
 }
 
-export class AgentMeshDaemonServer {
+export class AgentNetworkDaemonServer {
   private readonly store: DaemonStore;
   private readonly runtime: DaemonRuntime;
   private readonly startedAt = new Date().toISOString();
@@ -65,7 +65,7 @@ export class AgentMeshDaemonServer {
   private readonly preferredUiHost: string;
   private readonly preferredUiPort: number;
   private readonly logPath: string | null;
-  private readonly uiControlHooks: AgentMeshDaemonServerOptions['uiControlHooks'];
+  private readonly uiControlHooks: AgentNetworkDaemonServerOptions['uiControlHooks'];
   private socketServer: NetServer | null = null;
   private socketPath: string | null = null;
   private uiServer: UiHttpServerHandle | null = null;
@@ -85,7 +85,7 @@ export class AgentMeshDaemonServer {
       });
   };
 
-  constructor(options: AgentMeshDaemonServerOptions = {}) {
+  constructor(options: AgentNetworkDaemonServerOptions = {}) {
     this.dbPath = options.dbPath ?? getDaemonDbPath();
     this.logPath = options.logPath ?? null;
     this.uiControlHooks = options.uiControlHooks;
@@ -198,8 +198,8 @@ export class AgentMeshDaemonServer {
       this.registerSignalHandlers();
     }
 
-    log.info(`agent-mesh daemon listening on ${socketPath}`);
-    log.info(`agent-mesh local ui listening on ${this.uiBaseUrl}`);
+    log.info(`agent-network daemon listening on ${socketPath}`);
+    log.info(`agent-network local ui listening on ${this.uiBaseUrl}`);
     void this.restoreProviderIngresses();
   }
 

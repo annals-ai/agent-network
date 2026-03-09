@@ -26,7 +26,7 @@ if (autoUpgrade.relaunched) {
 }
 
 program
-  .name('agent-mesh')
+  .name('agent-network')
   .description('Run local AI agents through a daemon-first mesh runtime')
   .version(version)
   .option('-v', 'output the version number')
@@ -66,7 +66,7 @@ program
         .map((cmd) => cmd.name())
         .filter((name) => name !== 'help');
       console.log(JSON.stringify({
-        name: 'agent-mesh',
+        name: 'agent-network',
         docs: 'https://agents.hot/docs/cli',
         commands,
       }));

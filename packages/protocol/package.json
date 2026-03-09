@@ -1,7 +1,7 @@
 {
   "name": "@annals/bridge-protocol",
   "version": "0.2.2",
-  "description": "Bridge Protocol type definitions for agent-mesh",
+  "description": "Bridge Protocol type definitions for agent-network",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,11 +22,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/annals-ai/agent-mesh.git",
+    "url": "git+https://github.com/annals-ai/agent-network.git",
     "directory": "packages/protocol"
   },
-  "homepage": "https://github.com/annals-ai/agent-mesh#readme",
+  "homepage": "https://github.com/annals-ai/agent-network#readme",
   "bugs": {
-    "url": "https://github.com/annals-ai/agent-mesh/issues"
+    "url": "https://github.com/annals-ai/agent-network/issues"
   }
 }

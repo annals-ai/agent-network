@@ -9,7 +9,7 @@ type TranslationTree = {
   [key: string]: TranslationLeaf | TranslationTree;
 };
 
-const LANGUAGE_STORAGE_KEY = 'agent-mesh.ui.language';
+const LANGUAGE_STORAGE_KEY = 'agent-network.ui.language';
 
 const messages: Record<ResolvedLanguage, TranslationTree> = {
   en: {

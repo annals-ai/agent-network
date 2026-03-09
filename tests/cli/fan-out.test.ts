@@ -10,7 +10,7 @@ describe('Fan-Out types and store support', () => {
   let store: DaemonStore;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-mesh-fanout-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-fanout-'));
     store = new DaemonStore(join(tempDir, 'state.db'));
   });
 

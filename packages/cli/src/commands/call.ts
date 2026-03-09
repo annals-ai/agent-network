@@ -392,7 +392,7 @@ async function asyncCall(opts: {
     } catch { /* ignore */ }
     if (errorCode === 'subscription_required') {
       log.error('This is a private agent.');
-      console.error(`  Subscribe first: agent-mesh subscribe <author-login>`);
+      console.error(`  Subscribe first: agent-network subscribe <author-login>`);
     } else {
       log.error(msg);
     }
@@ -485,7 +485,7 @@ async function asyncCall(opts: {
         await webrtcDownload(opts.id, offer, opts.token, outputDir, opts.json);
       }
       if (!opts.json) {
-        log.info(`${GRAY}Rate this call: agent-mesh rate ${call_id} <1-5> --agent ${opts.id}${RESET}`);
+        log.info(`${GRAY}Rate this call: agent-network rate ${call_id} <1-5> --agent ${opts.id}${RESET}`);
       }
       return { callId: call_id, ...(session_key ? { sessionKey: session_key } : {}) };
     }
@@ -551,7 +551,7 @@ async function streamCall(opts: {
     } catch { /* ignore */ }
     if (errorCode === 'subscription_required') {
       log.error('This is a private agent.');
-      console.error(`  Subscribe first: agent-mesh subscribe <author-login>`);
+      console.error(`  Subscribe first: agent-network subscribe <author-login>`);
     } else {
       log.error(msg);
     }
@@ -693,7 +693,7 @@ async function streamCall(opts: {
       log.info(`${GRAY}Session:${RESET} ${sessionKey}`);
     }
     if (callId) {
-      log.info(`${GRAY}Rate this call: agent-mesh rate ${callId} <1-5> --agent ${opts.id}${RESET}`);
+      log.info(`${GRAY}Rate this call: agent-network rate ${callId} <1-5> --agent ${opts.id}${RESET}`);
     }
   }
 
@@ -763,7 +763,7 @@ export function registerCallCommand(program: Command): void {
       try {
         const token = loadToken();
         if (!token) {
-          log.error('Not authenticated. Run `agent-mesh login` first.');
+          log.error('Not authenticated. Run `agent-network login` first.');
           process.exit(1);
         }
 

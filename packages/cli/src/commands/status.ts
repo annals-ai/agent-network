@@ -10,7 +10,7 @@ export function registerStatusCommand(program: Command): void {
     .command('status')
     .description('Show daemon, local agent, and auth status')
     .action(async () => {
-      log.banner('Agent Mesh Status');
+      log.banner('Agent Network Status');
 
       const daemon = await getDaemonStatus();
       console.log(`Daemon: ${daemon.running ? `${GREEN}running${RESET}` : `${YELLOW}stopped${RESET}`}`);
@@ -41,7 +41,7 @@ export function registerStatusCommand(program: Command): void {
       if (!hasToken()) {
         console.log('Auth:   not logged in');
         console.log('');
-        console.log('Run `agent-mesh login` to enable provider sync/expose.');
+        console.log('Run `agent-network login` to enable provider sync/expose.');
         return;
       }
 
@@ -50,9 +50,9 @@ export function registerStatusCommand(program: Command): void {
       console.log(`Auth:   logged in (${maskedToken})`);
       console.log('');
       console.log(`  ${BOLD}Primary Flow${RESET}`);
-      console.log(`  ${GRAY}1.${RESET} agent-mesh daemon start`);
-      console.log(`  ${GRAY}2.${RESET} agent-mesh agent add --name ... --project ...`);
-      console.log(`  ${GRAY}3.${RESET} agent-mesh chat <local-agent> "..."`);
-      console.log(`  ${GRAY}4.${RESET} agent-mesh agent expose <local-agent> --provider agents-hot`);
+      console.log(`  ${GRAY}1.${RESET} agent-network daemon start`);
+      console.log(`  ${GRAY}2.${RESET} agent-network agent add --name ... --project ...`);
+      console.log(`  ${GRAY}3.${RESET} agent-network chat <local-agent> "..."`);
+      console.log(`  ${GRAY}4.${RESET} agent-network agent expose <local-agent> --provider agents-hot`);
     });
 }
