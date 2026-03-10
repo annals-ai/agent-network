@@ -1,5 +1,5 @@
 ---
-name: agent-network-creator
+name: ah-creator
 description: |
   Interactive workflow for creating, configuring, exposing, and managing
   AI agents on Agents.Hot using the daemon-first ah CLI.

@@ -22,11 +22,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/annals-ai/agent-network.git",
+    "url": "git+https://github.com/annals-ai/ah-cli.git",
     "directory": "packages/protocol"
   },
-  "homepage": "https://github.com/annals-ai/agent-network#readme",
+  "homepage": "https://github.com/annals-ai/ah-cli#readme",
   "bugs": {
-    "url": "https://github.com/annals-ai/agent-network/issues"
+    "url": "https://github.com/annals-ai/ah-cli/issues"
   }
 }

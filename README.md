@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
 [![npm downloads](https://img.shields.io/npm/dm/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
-[![license](https://img.shields.io/github/license/annals-ai/agent-network.svg)](./LICENSE)
+[![license](https://img.shields.io/github/license/annals-ai/ah-cli.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 

@@ -1,5 +1,5 @@
 ---
-name: agent-network-dev
+name: ah-dev
 description: |
   Agent Network (Bridge Worker / CLI / Protocol) code development guide.
   Use when modifying code, adapters, Worker, protocol, provider ingress,
@@ -119,4 +119,4 @@ git push origin "v${VERSION}"
 - `agent-network/CLAUDE.md`
 - `references/architecture.md`
 - `references/protocol-reference.md`
-- `.claude/skills/agent-network-creator/references/cli-reference.md`
+- `.claude/skills/ah-creator/references/cli-reference.md`

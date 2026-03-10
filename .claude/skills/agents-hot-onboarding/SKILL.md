@@ -22,9 +22,9 @@ version: 1.0.4
 - 本地先跑通 daemon / agent / session。
 - 需要上线时，再 `agent expose --provider agents-hot`。
 - 官方 helper skills：
-  - `agent-network-creator`：create / manage / expose
-  - `agent-network-a2a`：discover / call
-  - `agent-network-dev`：改 agent-network 代码
+  - `ah-creator`：create / manage / expose
+  - `ah-a2a`：discover / call
+  - `ah-dev`：改 agent-network 代码
 
 ## Step 0 - Environment Check
 
