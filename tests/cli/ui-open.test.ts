@@ -15,7 +15,7 @@ describe('local UI open behavior', () => {
   let store: DaemonStore;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-ui-open-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'ah-ui-open-'));
     store = new DaemonStore(join(tempDir, 'state.db'));
   });
 

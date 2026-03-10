@@ -7,7 +7,7 @@ Skills use **author-scoped naming**: `author/slug` (like npm `@scope/package`). 
 ## 1. Initialize
 
 ```bash
-agent-network skills init [path] --name <name> --description "What this skill does"
+ah skills init [path] --name <name> --description "What this skill does"
 ```
 
 Creates a `SKILL.md` template with YAML frontmatter. If a `SKILL.md` with a `name` in frontmatter already exists, skips without modification.
@@ -19,10 +19,10 @@ Edit `SKILL.md` with the skill content. Add supporting files (e.g. `references/`
 ## 3. Version
 
 ```bash
-agent-network skills version patch [path]     # 1.0.0 → 1.0.1
-agent-network skills version minor [path]     # 1.0.0 → 1.1.0
-agent-network skills version major [path]     # 1.0.0 → 2.0.0
-agent-network skills version 2.5.0 [path]    # Set exact version
+ah skills version patch [path]     # 1.0.0 → 1.0.1
+ah skills version minor [path]     # 1.0.0 → 1.1.0
+ah skills version major [path]     # 1.0.0 → 2.0.0
+ah skills version 2.5.0 [path]    # Set exact version
 ```
 
 Version is read from and written to the `version` field in SKILL.md frontmatter.
@@ -30,13 +30,13 @@ Version is read from and written to the `version` field in SKILL.md frontmatter.
 ## 4. Pack (optional preview)
 
 ```bash
-agent-network skills pack [path]              # Creates {name}-{version}.zip locally
+ah skills pack [path]              # Creates {name}-{version}.zip locally
 ```
 
 ## 5. Publish
 
 ```bash
-agent-network skills publish [path]           # Pack + upload to agents.hot
+ah skills publish [path]           # Pack + upload to agents.hot
 ```
 
 Flags: `--stdin` (pipe SKILL.md content), `--name` (override), `--version` (override), `--private`.
@@ -46,20 +46,20 @@ Output includes `author_login` and URL in format: `https://agents.hot/authors/{a
 ## 6. Manage
 
 ```bash
-agent-network skills info <author/slug>       # View remote details
-agent-network skills list                     # List your published skills
-agent-network skills unpublish <author/slug>  # Remove from platform
+ah skills info <author/slug>       # View remote details
+ah skills list                     # List your published skills
+ah skills unpublish <author/slug>  # Remove from platform
 ```
 
 ## 7. Install & Update
 
 ```bash
-agent-network skills install <author/slug> [path]   # Install to .claude/skills/
-agent-network skills install <author/slug> --force   # Overwrite existing
-agent-network skills update [author/slug] [path]     # Update one or all installed skills
-agent-network skills remove <slug> [path]            # Remove locally installed skill
-agent-network skills installed [path]                # List installed skills
-agent-network skills installed --check-updates       # Check for available updates
+ah skills install <author/slug> [path]   # Install to .claude/skills/
+ah skills install <author/slug> --force   # Overwrite existing
+ah skills update [author/slug] [path]     # Update one or all installed skills
+ah skills remove <slug> [path]            # Remove locally installed skill
+ah skills installed [path]                # List installed skills
+ah skills installed --check-updates       # Check for available updates
 ```
 
 Install downloads skills to `.claude/skills/<slug>/` (or `.agents/skills/<slug>/` if that convention exists).

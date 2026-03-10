@@ -38,11 +38,11 @@ const SENSITIVE_PATHS: string[] = [
   '~/.claude/sessions',          // session data
   '~/.claude/ide',               // IDE integration data
   // Other AI agent configs (contain API keys / tokens)
-  // ~/.agent-network — fine-grained: block tokens/config, allow agent workspaces
-  // NOT blocked: ~/.agent-network/agents/ (per-agent project workspaces used as cwd)
-  '~/.agent-network/config.json',   // contains ah_ platform token
-  '~/.agent-network/pids',
-  '~/.agent-network/logs',
+  // ~/.ah — fine-grained: block tokens/config, allow agent workspaces
+  // NOT blocked: ~/.ah/agents/ (per-agent project workspaces used as cwd)
+  '~/.ah/config.json',   // contains ah_ platform token
+  '~/.ah/pids',
+  '~/.ah/logs',
   // Package manager tokens
   '~/.npmrc',
   '~/.yarnrc',

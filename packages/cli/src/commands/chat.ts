@@ -440,7 +440,7 @@ export function registerChatCommand(program: Command): void {
 
       const token = loadToken();
       if (!token) {
-        log.error('Not authenticated. Run `agent-network login` first.');
+        log.error('Not authenticated. Run `ah login` first.');
         process.exit(1);
       }
 

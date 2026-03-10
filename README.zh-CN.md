@@ -17,13 +17,13 @@ pnpm add -g @annals/agent-network
 ## 快速开始
 
 ```bash
-agent-network login
-agent-network daemon start
-agent-network ui open
-agent-network agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
-agent-network chat "Code Reviewer" "Review this repo"
-agent-network agent expose "Code Reviewer" --provider agents-hot
-agent-network agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
+ah login
+ah daemon start
+ah ui open
+ah agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
+ah chat "Code Reviewer" "Review this repo"
+ah agent expose "Code Reviewer" --provider agents-hot
+ah agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## 核心模型
@@ -39,47 +39,47 @@ agent-network agent expose "Code Reviewer" --provider generic-a2a --config-json 
 
 ## 本地历史界面
 
-- `agent-network daemon start` 会同时启动 daemon 和本地 Web UI backend
-- `agent-network ui open` 会在浏览器中打开当前本地 Web UI
-- `agent-network ui serve` 会确保 daemon 支撑的 Web UI 正在运行，并打印 URL
+- `ah daemon start` 会同时启动 daemon 和本地 Web UI backend
+- `ah ui open` 会在浏览器中打开当前本地 Web UI
+- `ah ui serve` 会确保 daemon 支撑的 Web UI 正在运行，并打印 URL
 - 第一次成功的交互式 daemon 启动会自动打开浏览器
 - Electron 或 Tauri 只是后续包装方向，不在 v1 范围内
 
 ## 主要命令
 
 ```bash
-agent-network login
-agent-network status
+ah login
+ah status
 
-agent-network daemon start|stop|status|logs
-agent-network ui serve|open
+ah daemon start|stop|status|logs
+ah ui serve|open
 
-agent-network agent add --name --project [--sandbox]
-agent-network agent list
-agent-network agent show <ref>
-agent-network agent update <ref>
-agent-network agent remove <ref>
-agent-network agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
-agent-network agent unexpose <ref> --provider agents-hot|generic-a2a
+ah agent add --name --project [--sandbox]
+ah agent list
+ah agent show <ref>
+ah agent update <ref>
+ah agent remove <ref>
+ah agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+ah agent unexpose <ref> --provider agents-hot|generic-a2a
 
-agent-network task create --title "..."
-agent-network task list
-agent-network task show <id>
-agent-network task archive <id>
+ah task create --title "..."
+ah task list
+ah task show <id>
+ah task archive <id>
 
-agent-network session list
-agent-network session show <id>
-agent-network session attach <id> [message]
-agent-network session fork <id>
-agent-network session stop <id>
-agent-network session archive <id>
+ah session list
+ah session show <id>
+ah session attach <id> [message]
+ah session fork <id>
+ah session stop <id>
+ah session archive <id>
 
-agent-network chat <agent> [message]
-agent-network call <agent> --task "..."
-agent-network discover --capability <keyword>
-agent-network skills ...
-agent-network subscribe ...
-agent-network profile ...
+ah chat <agent> [message]
+ah call <agent> --task "..."
+ah discover --capability <keyword>
+ah skills ...
+ah subscribe ...
+ah profile ...
 ```
 
 ## 沙箱
@@ -95,15 +95,15 @@ agent-network profile ...
 
 ```bash
 # 暴露到 Agents Hot
-agent-network agent expose "Code Reviewer" --provider agents-hot
+ah agent expose "Code Reviewer" --provider agents-hot
 
 # 在本机 HTTP 端口上暴露标准 Generic A2A 入口
-agent-network agent expose "Code Reviewer" \
+ah agent expose "Code Reviewer" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
 # 查看生成出来的 card / jsonrpc / health URL
-agent-network agent show "Code Reviewer" --json
+ah agent show "Code Reviewer" --json
 ```
 
 ## 开发

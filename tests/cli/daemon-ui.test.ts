@@ -102,7 +102,7 @@ describe('AgentNetworkDaemonServer UI', () => {
   let server: AgentNetworkDaemonServer | null = null;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-daemon-ui-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'ah-daemon-ui-'));
   });
 
   afterEach(async () => {

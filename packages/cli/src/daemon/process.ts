@@ -173,7 +173,7 @@ export function scheduleDaemonRestartFromCurrentProcess(): void {
 
   const entryPath = process.argv[1];
   if (!entryPath) {
-    throw new Error('Unable to determine the agent-network CLI entrypoint for restart.');
+    throw new Error('Unable to determine the ah CLI entrypoint for restart.');
   }
 
   const logPath = getDaemonLogPath();
@@ -248,7 +248,7 @@ export async function waitForDaemonReady(timeoutMs = 30_000): Promise<void> {
     }
     await sleep(100);
   }
-  throw new Error('Timed out waiting for agent-network daemon to start.');
+  throw new Error('Timed out waiting for ah daemon to start.');
 }
 
 export async function getDaemonStatus(): Promise<{

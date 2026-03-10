@@ -40,7 +40,7 @@ export const DEFAULT_RUNTIME_CONFIG: ResolvedRuntimeConfig = {
   queue_max_length: 1000,
 };
 
-const CONFIG_DIR = join(homedir(), '.agent-network');
+const CONFIG_DIR = join(homedir(), '.ah');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 const PIDS_DIR = join(CONFIG_DIR, 'pids');
 const LOGS_DIR = join(CONFIG_DIR, 'logs');
@@ -77,7 +77,7 @@ export function maybePrintDocsHint(docsUrl: string): void {
   if (config.docsHintShownAt) return;
 
   // Print once to stderr so agent runners can discover docs without polluting stdout JSON.
-  process.stderr.write(`\n[agent-network] Docs: ${docsUrl}\n\n`);
+  process.stderr.write(`\n[ah] Docs: ${docsUrl}\n\n`);
   config.docsHintShownAt = new Date().toISOString();
   saveConfig(config);
 }
@@ -174,7 +174,7 @@ const AGENTS_DIR = join(CONFIG_DIR, 'agents');
 
 /**
  * Get (and create) the dedicated workspace directory for an agent.
- * Each agent gets `~/.agent-network/agents/<name>/` as its project root.
+ * Each agent gets `~/.ah/agents/<name>/` as its project root.
  * Developer defines role + skills here: `CLAUDE.md` + `.claude/skills/`
  */
 export function getAgentWorkspaceDir(name: string): string {

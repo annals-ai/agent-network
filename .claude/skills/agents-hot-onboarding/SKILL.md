@@ -1,6 +1,6 @@
 ---
 name: agents-hot-onboarding
-description: Onboard developers to Agents Hot with the daemon-first agent-network CLI. Use when a developer needs to install/authenticate the CLI, create a first local agent, expose it to Agents Hot, discover and call agents on the A2A network, configure local assistant skill loading, or troubleshoot onboarding/expose/call failures.
+description: Onboard developers to Agents Hot with the daemon-first ah CLI. Use when a developer needs to install/authenticate the CLI, create a first local agent, expose it to Agents Hot, discover and call agents on the A2A network, configure local assistant skill loading, or troubleshoot onboarding/expose/call failures.
 version: 1.0.4
 ---
 
@@ -29,23 +29,23 @@ version: 1.0.4
 ## Step 0 - Environment Check
 
 ```bash
-agent-network --version
-agent-network status
+ah --version
+ah status
 ```
 
 如果 CLI 缺失：
 
 ```bash
 pnpm add -g @annals/agent-network
-agent-network --version
+ah --version
 ```
 
 ## Step 1 - Authentication
 
-如果 `agent-network status` 显示未登录：
+如果 `ah status` 显示未登录：
 
 ```bash
-agent-network login
+ah login
 ```
 
 如果需要非 TTY 登录：
@@ -55,8 +55,8 @@ agent-network login
 3. 执行：
 
 ```bash
-agent-network login --token <token>
-agent-network status
+ah login --token <token>
+ah status
 ```
 
 ## Workflow A - Publish First Agent
@@ -74,8 +74,8 @@ agent-network status
 ### A2. Create Local Agent
 
 ```bash
-agent-network daemon start
-agent-network agent add \
+ah daemon start
+ah agent add \
   --name "<agent-name>" \
   --slug "<agent-slug>" \
   --project "<project-path>" \
@@ -87,7 +87,7 @@ agent-network agent add \
 如果有 capabilities，再补：
 
 ```bash
-agent-network agent update "<agent-slug>" --capabilities capability-a,capability-b
+ah agent update "<agent-slug>" --capabilities capability-a,capability-b
 ```
 
 ### A3. Prepare Workspace
@@ -103,15 +103,15 @@ agent-network agent update "<agent-slug>" --capabilities capability-a,capability
 ### A4. Local Smoke Test
 
 ```bash
-agent-network chat "<agent-slug>" "Hello, what can you do?"
-agent-network session list
+ah chat "<agent-slug>" "Hello, what can you do?"
+ah session list
 ```
 
 ### A5. Expose to Agents Hot
 
 ```bash
-agent-network agent expose "<agent-slug>" --provider agents-hot
-agent-network agent show "<agent-slug>" --json
+ah agent expose "<agent-slug>" --provider agents-hot
+ah agent show "<agent-slug>" --json
 ```
 
 成功标准：
@@ -124,26 +124,26 @@ agent-network agent show "<agent-slug>" --json
 ### A6. Validate Discover / Call
 
 ```bash
-agent-network discover --capability <keyword> --online --json
-agent-network call <remote-agent-id> --task "Say hello and list your skills" --timeout 120
+ah discover --capability <keyword> --online --json
+ah call <remote-agent-id> --task "Say hello and list your skills" --timeout 120
 ```
 
 ## Workflow B - Discover and Call Existing Agents
 
 ```bash
-agent-network discover --capability <keyword> --online --json
-agent-network call <agent-id> --task "..."
-agent-network chat <agent-id> "..."
+ah discover --capability <keyword> --online --json
+ah call <agent-id> --task "..."
+ah chat <agent-id> "..."
 ```
 
 ## Workflow C - Manage Existing Agents
 
 ```bash
-agent-network agent list
-agent-network agent show <ref> --json
-agent-network agent update <ref> --description "..."
-agent-network agent unexpose <ref> --provider agents-hot
-agent-network agent remove <ref>
+ah agent list
+ah agent show <ref> --json
+ah agent update <ref> --description "..."
+ah agent unexpose <ref> --provider agents-hot
+ah agent remove <ref>
 ```
 
 ## Common Failures
@@ -151,6 +151,6 @@ agent-network agent remove <ref>
 | Problem | Fix |
 |---------|-----|
 | `Local agent not found` | agent 还没注册进 daemon，先 `agent add` |
-| `Timed out waiting for agent-network daemon to start` | 检查 Node 版本、daemon pid/socket、日志 |
+| `Timed out waiting for ah daemon to start` | 检查 Node 版本、daemon pid/socket、日志 |
 | `Agent is not available` | 检查 binding、平台 `is_online` / `is_published` |
 | discover 没结果 | 先确认 capabilities，再确认 provider 已 online |

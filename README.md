@@ -17,13 +17,13 @@ pnpm add -g @annals/agent-network
 ## Quickstart
 
 ```bash
-agent-network login
-agent-network daemon start
-agent-network ui open
-agent-network agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
-agent-network chat "Code Reviewer" "Review this repo"
-agent-network agent expose "Code Reviewer" --provider agents-hot
-agent-network agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
+ah login
+ah daemon start
+ah ui open
+ah agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
+ah chat "Code Reviewer" "Review this repo"
+ah agent expose "Code Reviewer" --provider agents-hot
+ah agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
 ## Core Model
@@ -39,47 +39,47 @@ The daemon owns local state in SQLite. Full transcript history stays local to th
 
 ## Local History Surface
 
-- `agent-network daemon start` starts both the daemon and the local Web UI backend
-- `agent-network ui open` opens the current local Web UI in your browser
-- `agent-network ui serve` ensures the daemon-backed Web UI is running and prints the URL
+- `ah daemon start` starts both the daemon and the local Web UI backend
+- `ah ui open` opens the current local Web UI in your browser
+- `ah ui serve` ensures the daemon-backed Web UI is running and prints the URL
 - On the first successful interactive daemon launch, Agent Network opens the Web UI automatically
 - Electron or Tauri can wrap this local Web UI later, but that is not part of v1
 
 ## Main Commands
 
 ```bash
-agent-network login
-agent-network status
+ah login
+ah status
 
-agent-network daemon start|stop|status|logs
-agent-network ui serve|open
+ah daemon start|stop|status|logs
+ah ui serve|open
 
-agent-network agent add --name --project [--sandbox]
-agent-network agent list
-agent-network agent show <ref>
-agent-network agent update <ref>
-agent-network agent remove <ref>
-agent-network agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
-agent-network agent unexpose <ref> --provider agents-hot|generic-a2a
+ah agent add --name --project [--sandbox]
+ah agent list
+ah agent show <ref>
+ah agent update <ref>
+ah agent remove <ref>
+ah agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
+ah agent unexpose <ref> --provider agents-hot|generic-a2a
 
-agent-network task create --title "..."
-agent-network task list
-agent-network task show <id>
-agent-network task archive <id>
+ah task create --title "..."
+ah task list
+ah task show <id>
+ah task archive <id>
 
-agent-network session list
-agent-network session show <id>
-agent-network session attach <id> [message]
-agent-network session fork <id>
-agent-network session stop <id>
-agent-network session archive <id>
+ah session list
+ah session show <id>
+ah session attach <id> [message]
+ah session fork <id>
+ah session stop <id>
+ah session archive <id>
 
-agent-network chat <agent> [message]
-agent-network call <agent> --task "..."
-agent-network discover --capability <keyword>
-agent-network skills ...
-agent-network subscribe ...
-agent-network profile ...
+ah chat <agent> [message]
+ah call <agent> --task "..."
+ah discover --capability <keyword>
+ah skills ...
+ah subscribe ...
+ah profile ...
 ```
 
 ## Sandbox
@@ -95,15 +95,15 @@ Session ownership does not depend on sandbox mode.
 
 ```bash
 # Agents Hot ingress
-agent-network agent expose "Code Reviewer" --provider agents-hot
+ah agent expose "Code Reviewer" --provider agents-hot
 
 # Generic A2A ingress on a local HTTP port
-agent-network agent expose "Code Reviewer" \
+ah agent expose "Code Reviewer" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
 # Inspect generated URLs
-agent-network agent show "Code Reviewer" --json
+ah agent show "Code Reviewer" --json
 ```
 
 ## Development

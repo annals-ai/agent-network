@@ -91,7 +91,7 @@ describe('AgentNetworkDaemonServer UI API', () => {
   let server: AgentNetworkDaemonServer | null = null;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'agent-network-ui-api-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'ah-ui-api-'));
     dbPath = join(tempDir, 'state.db');
   });
 

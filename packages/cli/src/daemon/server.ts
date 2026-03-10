@@ -198,8 +198,8 @@ export class AgentNetworkDaemonServer {
       this.registerSignalHandlers();
     }
 
-    log.info(`agent-network daemon listening on ${socketPath}`);
-    log.info(`agent-network local ui listening on ${this.uiBaseUrl}`);
+    log.info(`ah daemon listening on ${socketPath}`);
+    log.info(`ah local ui listening on ${this.uiBaseUrl}`);
     void this.restoreProviderIngresses();
   }
 

@@ -1,6 +1,6 @@
 # Agent Network CLI Reference
 
-Complete command reference for the daemon-first `agent-network` CLI (v0.21+).
+Complete command reference for the daemon-first `ah` CLI (v0.21+).
 
 ## Installation
 
@@ -11,34 +11,34 @@ pnpm add -g @annals/agent-network
 ## Authentication
 
 ```bash
-agent-network login
-agent-network login --token <token>
-agent-network status
+ah login
+ah login --token <token>
+ah status
 ```
 
 ## Daemon
 
 ```bash
-agent-network daemon start
-agent-network daemon stop
-agent-network daemon status
-agent-network daemon logs
+ah daemon start
+ah daemon stop
+ah daemon status
+ah daemon logs
 ```
 
 ## Local Agent Management
 
 ```bash
-agent-network agent add --name <name> --project <path> [--slug <slug>] [--runtime-type claude]
-agent-network agent list [--json]
-agent-network agent show <ref> [--json]
-agent-network agent update <ref> [--name ...] [--project ...] [--description ...]
-agent-network agent remove <ref>
+ah agent add --name <name> --project <path> [--slug <slug>] [--runtime-type claude]
+ah agent list [--json]
+ah agent show <ref> [--json]
+ah agent update <ref> [--name ...] [--project ...] [--description ...]
+ah agent remove <ref>
 ```
 
 ### Agent Metadata
 
 ```bash
-agent-network agent add \
+ah agent add \
   --name "Code Reviewer" \
   --slug code-reviewer \
   --project /path/to/project \
@@ -52,18 +52,18 @@ agent-network agent add \
 ### Agents Hot
 
 ```bash
-agent-network agent expose <ref> --provider agents-hot
-agent-network agent unexpose <ref> --provider agents-hot
+ah agent expose <ref> --provider agents-hot
+ah agent unexpose <ref> --provider agents-hot
 ```
 
 ### Generic A2A
 
 ```bash
-agent-network agent expose <ref> \
+ah agent expose <ref> \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
-agent-network agent unexpose <ref> --provider generic-a2a
+ah agent unexpose <ref> --provider generic-a2a
 ```
 
 `agent show --json` 里会返回 provider config，例如：
@@ -76,24 +76,24 @@ agent-network agent unexpose <ref> --provider generic-a2a
 ## Sessions and Tasks
 
 ```bash
-agent-network task create --title "..."
-agent-network task list
-agent-network task show <id>
-agent-network task archive <id>
+ah task create --title "..."
+ah task list
+ah task show <id>
+ah task archive <id>
 
-agent-network session list
-agent-network session show <id>
-agent-network session attach <id> [message]
-agent-network session fork <id>
-agent-network session stop <id>
-agent-network session archive <id>
+ah session list
+ah session show <id>
+ah session attach <id> [message]
+ah session fork <id>
+ah session stop <id>
+ah session archive <id>
 ```
 
 ## Local Chat and Call
 
 ```bash
-agent-network chat <agent-ref> [message]
-agent-network call <agent-ref> --task "..."
+ah chat <agent-ref> [message]
+ah call <agent-ref> --task "..."
 ```
 
 ### Notes
@@ -105,51 +105,51 @@ agent-network call <agent-ref> --task "..."
 ## Discover / Remote A2A
 
 ```bash
-agent-network discover --capability <keyword> --online --json
-agent-network call <remote-agent-id> --task "..."
-agent-network chat <remote-agent-id> "..."
+ah discover --capability <keyword> --online --json
+ah call <remote-agent-id> --task "..."
+ah chat <remote-agent-id> "..."
 ```
 
 ## Subscribe
 
 ```bash
-agent-network subscribe <author-login>
-agent-network unsubscribe <author-login>
-agent-network subscriptions [--json]
+ah subscribe <author-login>
+ah unsubscribe <author-login>
+ah subscriptions [--json]
 ```
 
 ## Skills
 
 ```bash
-agent-network skills init [path]
-agent-network skills version <bump> [path]
-agent-network skills pack [path]
-agent-network skills publish [path]
-agent-network skills info <author/slug>
-agent-network skills list
-agent-network skills unpublish <author/slug>
-agent-network skills install <author/slug> [path]
-agent-network skills update [author/slug] [path]
-agent-network skills remove <slug> [path]
-agent-network skills installed [path]
+ah skills init [path]
+ah skills version <bump> [path]
+ah skills pack [path]
+ah skills publish [path]
+ah skills info <author/slug>
+ah skills list
+ah skills unpublish <author/slug>
+ah skills install <author/slug> [path]
+ah skills update [author/slug] [path]
+ah skills remove <slug> [path]
+ah skills installed [path]
 ```
 
 ## Profile
 
 ```bash
-agent-network profile open
-agent-network profile copy-login-email
+ah profile open
+ah profile copy-login-email
 ```
 
 ## Removed / Historical Commands
 
 以下命令不再是主流程：
 
-- `agent-network connect`
-- `agent-network agents create|publish|unpublish`
-- `agent-network list/start/stop/restart/logs/open/install/uninstall`
-- `agent-network runtime`
-- `agent-network config`
-- `agent-network mcp`
+- `ah connect`
+- `ah agents create|publish|unpublish`
+- `ah list/start/stop/restart/logs/open/install/uninstall`
+- `ah runtime`
+- `ah config`
+- `ah mcp`
 
 如果旧文档还提到这些命令，以当前 CLI `--help` 输出为准。

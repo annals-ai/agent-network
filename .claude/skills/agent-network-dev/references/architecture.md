@@ -120,7 +120,7 @@ sandbox 不决定 session 归属。
 以下已经不是当前主架构：
 
 - `connect-ticket`
-- `agent-network connect`
+- `ah connect`
 - 每个 agent 一个单独后台进程
 - MCP 作为平台主入口
 

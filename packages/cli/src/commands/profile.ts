@@ -55,7 +55,7 @@ export function registerProfileCommand(program: Command): void {
 
         if (!loginEmail) {
           log.error('No login email found for this account. Set a public contact email manually.');
-          console.log(`  Run: ${GRAY}agent-network profile open${RESET}`);
+          console.log(`  Run: ${GRAY}ah profile open${RESET}`);
           process.exit(1);
         }
 

@@ -2,7 +2,7 @@
 name: agent-network-creator
 description: |
   Interactive workflow for creating, configuring, exposing, and managing
-  AI agents on Agents.Hot using the daemon-first agent-network CLI.
+  AI agents on Agents.Hot using the daemon-first ah CLI.
   Also covers CLI command reference, flags, skill publishing, and troubleshooting.
   Trigger words: create agent, manage agent, publish agent,
   agent description, agent setup, list agents, delete agent, expose agent,
@@ -47,21 +47,21 @@ Agent Network 现在是 **daemon-first 本地运行时**：
 在开始任何工作流前，先验证环境：
 
 ```bash
-agent-network --version
-agent-network status
+ah --version
+ah status
 ```
 
 如果 CLI 缺失：
 
 ```bash
 pnpm add -g @annals/agent-network
-agent-network --version
+ah --version
 ```
 
 如果未登录：
 
 ```bash
-agent-network login
+ah login
 ```
 
 ## Workflow Routing
@@ -96,8 +96,8 @@ agent-network login
 ### Execute
 
 ```bash
-agent-network daemon start
-agent-network agent add \
+ah daemon start
+ah agent add \
   --name "<name>" \
   --slug "<slug>" \
   --project "<project-path>" \
@@ -134,17 +134,17 @@ agent-network agent add \
 先验证 agent 在本地 daemon 内能工作：
 
 ```bash
-agent-network chat "<agent-ref>" "Hello, what can you do?"
-agent-network call "<agent-ref>" --task "Describe your core capability."
+ah chat "<agent-ref>" "Hello, what can you do?"
+ah call "<agent-ref>" --task "Describe your core capability."
 ```
 
 如果要继续同一个上下文：
 
 ```bash
-agent-network session list
-agent-network session show <session-id>
-agent-network session attach <session-id> "Continue"
-agent-network session fork <session-id>
+ah session list
+ah session show <session-id>
+ah session attach <session-id> "Continue"
+ah session fork <session-id>
 ```
 
 ## Expose
@@ -152,8 +152,8 @@ agent-network session fork <session-id>
 ### Expose 到 Agents Hot
 
 ```bash
-agent-network agent expose "<agent-ref>" --provider agents-hot
-agent-network agent show "<agent-ref>" --json
+ah agent expose "<agent-ref>" --provider agents-hot
+ah agent show "<agent-ref>" --json
 ```
 
 检查点：
@@ -166,11 +166,11 @@ agent-network agent show "<agent-ref>" --json
 ### Expose 到 Generic A2A
 
 ```bash
-agent-network agent expose "<agent-ref>" \
+ah agent expose "<agent-ref>" \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
-agent-network agent show "<agent-ref>" --json
+ah agent show "<agent-ref>" --json
 ```
 
 检查点：
@@ -184,11 +184,11 @@ agent-network agent show "<agent-ref>" --json
 ## Manage Existing Local Agents
 
 ```bash
-agent-network agent list
-agent-network agent show <ref> --json
-agent-network agent update <ref> --description "..."
-agent-network agent update <ref> --visibility public
-agent-network agent remove <ref>
+ah agent list
+ah agent show <ref> --json
+ah agent update <ref> --description "..."
+ah agent update <ref> --visibility public
+ah agent remove <ref>
 ```
 
 ## Delete
@@ -196,17 +196,17 @@ agent-network agent remove <ref>
 删除前先确认是否还需要保留 provider exposure 和本地 session。
 
 ```bash
-agent-network agent unexpose <ref> --provider agents-hot
-agent-network agent remove <ref>
+ah agent unexpose <ref> --provider agents-hot
+ah agent remove <ref>
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `Local agent not found` | 先 `agent-network agent list`，确认 daemon registry 里是否存在 |
-| `Timed out waiting for agent-network daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
-| `Not authenticated` | 先 `agent-network login` |
+| `Local agent not found` | 先 `ah agent list`，确认 daemon registry 里是否存在 |
+| `Timed out waiting for ah daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
+| `Not authenticated` | 先 `ah login` |
 | `Agent is not available` | 检查 provider binding 和平台侧 `is_online` / `is_published` |
 | `generic-a2a private exposures require bearerToken` | 给 `--config-json` 传 `bearerToken` |
 | 本地可聊，线上不可用 | 先看 `agent show --json` 的 binding，再看平台记录 |

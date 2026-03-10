@@ -531,7 +531,7 @@ export function registerSkillsCommand(program: Command): void {
 
         if (opts.human) {
           if (data.owned.length === 0 && data.authorized.length === 0) {
-            slog.info('No skills found. Create one with: agent-network skills init');
+            slog.info('No skills found. Create one with: ah skills init');
             return;
           }
 
@@ -611,7 +611,7 @@ export function registerSkillsCommand(program: Command): void {
         const skillMdPath = join(dir, 'SKILL.md');
 
         if (!(await pathExists(skillMdPath))) {
-          outputError('not_found', 'No SKILL.md found. Run `agent-network skills init` first.');
+          outputError('not_found', 'No SKILL.md found. Run `ah skills init` first.');
         }
 
         const raw = await readFile(skillMdPath, 'utf-8');

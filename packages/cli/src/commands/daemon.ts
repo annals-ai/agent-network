@@ -36,7 +36,7 @@ function tailLog(path: string, lines: number): string[] {
 export function registerDaemonCommand(program: Command): void {
   const daemon = program
     .command('daemon')
-    .description('Manage the local agent-network daemon');
+    .description('Manage the local ah daemon');
 
   daemon
     .command('serve', { hidden: true })
@@ -95,7 +95,7 @@ export function registerDaemonCommand(program: Command): void {
     .action(async () => {
       const status = await getDaemonStatus();
       console.log('');
-      console.log(`  ${BOLD}Agent Network Daemon${RESET}`);
+      console.log(`  ${BOLD}AH Daemon${RESET}`);
       console.log('');
       console.log(`  ${GRAY}Running${RESET}    ${status.running ? `${GREEN}yes${RESET}` : 'no'}`);
       console.log(`  ${GRAY}PID${RESET}        ${status.pid ?? '—'}`);

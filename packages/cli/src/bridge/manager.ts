@@ -716,7 +716,7 @@ export class BridgeManager {
 
       // Extract to per-client workspace so Claude Code's Glob can find real files.
       // If clientId is provided and project is set, use .bridge-clients/{clientId}/.
-      let workspaceDir = this.adapterConfig.project || join(homedir(), '.agent-network', 'uploads');
+      let workspaceDir = this.adapterConfig.project || join(homedir(), '.ah', 'uploads');
       if (clientId && this.adapterConfig.project) {
         workspaceDir = createClientWorkspace(this.adapterConfig.project, clientId);
       }
@@ -769,7 +769,7 @@ export class BridgeManager {
   // ========================================================
 
   private transferCacheDir(): string {
-    return join(homedir(), '.agent-network', 'transfers');
+    return join(homedir(), '.ah', 'transfers');
   }
 
   private transferCachePath(transferId: string): string {
