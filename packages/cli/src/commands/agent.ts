@@ -207,4 +207,77 @@ export function registerAgentCommand(program: Command): void {
       });
       log.success(`Agent exposure updated: ${result.binding.provider} -> ${result.binding.status}`);
     });
+
+  agent
+    .command('clone <ref>')
+    .description('Clone an existing agent with a new name')
+    .requiredOption('--name <name>', 'New agent name')
+    .option('--slug <slug>', 'New local slug (defaults to name-based)')
+    .option('--project <path>', 'Override project directory')
+    .option('--reset-exposure', 'Do not copy provider bindings to the new agent')
+    .action(async (ref: string, opts: { name: string; slug?: string; project?: string; resetExposure?: boolean }) => {
+      await ensureDaemonRunning();
+
+      // Get the existing agent
+      const result = await requestDaemon<{
+        agent: {
+          id: string;
+          slug: string;
+          name: string;
+          runtimeType: string;
+          projectPath: string;
+          sandbox: boolean;
+          persona: string | null;
+          description: string | null;
+          capabilities: string[];
+          visibility: string;
+        };
+        bindings: Array<{
+          agentId: string;
+          provider: string;
+          status: string;
+          config: Record<string, unknown>;
+        }>;
+      }>('agent.get', { ref });
+
+      const sourceAgent = result.agent;
+
+      // Create the new agent with copied config
+      const newAgent = await requestDaemon<{ agent: { id: string; slug: string; name: string } }>('agent.add', {
+        name: opts.name,
+        slug: opts.slug,
+        runtimeType: sourceAgent.runtimeType,
+        projectPath: opts.project ?? sourceAgent.projectPath,
+        sandbox: sourceAgent.sandbox,
+        persona: sourceAgent.persona,
+        description: sourceAgent.description,
+        visibility: sourceAgent.visibility,
+        capabilities: sourceAgent.capabilities,
+      });
+
+      log.success(`Agent cloned: ${BOLD}${newAgent.agent.name}${RESET} (${newAgent.agent.slug})`);
+
+      // Copy provider bindings unless --reset-exposure is passed
+      if (!opts.resetExposure && result.bindings && result.bindings.length > 0) {
+        const activeBindings = result.bindings.filter((b) => b.status !== 'inactive');
+        if (activeBindings.length > 0) {
+          log.info(`Copying ${activeBindings.length} provider binding(s)...`);
+          for (const binding of activeBindings) {
+            try {
+              await requestDaemon('agent.expose', {
+                ref: newAgent.agent.slug,
+                provider: binding.provider,
+                config: binding.config,
+              });
+              console.log(`  ${GRAY}${binding.provider}${RESET}: copied`);
+            } catch (err) {
+              console.log(`  ${GRAY}${binding.provider}${RESET}: failed - ${err instanceof Error ? err.message : String(err)}`);
+            }
+          }
+        }
+      }
+
+      process.stderr.write(`\nOriginal: ${sourceAgent.name} (${sourceAgent.slug})\n`);
+      process.stderr.write(`Clone:    ${newAgent.agent.name} (${newAgent.agent.slug})\n`);
+    });
 }
