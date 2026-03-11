@@ -722,6 +722,12 @@ export class AgentNetworkDaemonServer {
         return { session };
       }
 
+      case 'session.delete': {
+        const id = expectString(request.params?.id, 'id');
+        this.store.deleteSession(id);
+        return { deleted: true, id };
+      }
+
       case 'session.run': {
         const agentRef = expectString(request.params?.agentRef, 'agentRef');
         const messages = request.params?.messages;

@@ -641,6 +641,18 @@ export class DaemonStore {
     return this.updateSession(sessionId, { status: 'archived', touchLastActive: true });
   }
 
+  deleteSession(sessionId: string): void {
+    // Verify session exists first
+    const session = this.getSession(sessionId);
+    if (!session) throw new Error(`Session not found: ${sessionId}`);
+
+    // Delete the session - CASCADE will automatically delete:
+    // - session_messages
+    // - session_tags
+    // - attachments
+    this.db.prepare(`DELETE FROM sessions WHERE id = ?`).run(sessionId);
+  }
+
   stopSession(sessionId: string): SessionRecord {
     return this.updateSession(sessionId, { status: 'paused', touchLastActive: true });
   }

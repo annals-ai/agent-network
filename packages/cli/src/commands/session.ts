@@ -608,6 +608,149 @@ export function registerSessionCommand(program: Command): void {
       log.success(`Session archived: ${BOLD}${session.title || session.id}${RESET}`);
     });
 
+  // --- Session delete: permanently delete sessions ---
+  session
+    .command('delete [id]')
+    .description('Permanently delete a session (cannot be undone)')
+    .option('-y, --yes', 'Skip confirmation prompt')
+    .option('--status <status>', 'Batch delete: filter by status (archived, failed, completed, etc.)')
+    .option('--all', 'Batch delete: delete all sessions matching --status filter')
+    .option('--dry-run', 'Batch delete: preview sessions to be deleted without deleting')
+    .option('--limit <number>', 'Batch delete: limit number of sessions to delete', parseInt)
+    .action(async (id: string | undefined, opts: { yes?: boolean; status?: string; all?: boolean; dryRun?: boolean; limit?: number }) => {
+      await ensureDaemonRunning();
+
+      // Batch delete mode: --status and --all
+      if (opts.status && opts.all) {
+        // Get sessions matching the status filter
+        const result = await requestDaemon<{
+          sessions: Array<{
+            id: string;
+            title: string | null;
+            status: string;
+            lastActiveAt: string;
+            agentId: string;
+            agentName?: string;
+          }>;
+        }>('session.list', { status: opts.status, limit: opts.limit });
+
+        const sessions = result.sessions;
+
+        if (sessions.length === 0) {
+          log.info(`No sessions found with status: ${opts.status}`);
+          return;
+        }
+
+        // Dry run: just show what would be deleted
+        if (opts.dryRun) {
+          console.log(`\n${BOLD}${RED}Sessions to delete (${sessions.length}):${RESET}\n`);
+          for (const s of sessions) {
+            const title = s.title || '(no title)';
+            console.log(`  ${GRAY}${s.id.slice(0, 8)}${RESET}  ${title.slice(0, 50)}${title.length > 50 ? '...' : ''}`);
+          }
+          console.log(`\n  ${RED}Warning: This is permanent and cannot be undone!${RESET}`);
+          console.log(`  ${GRAY}Run without --dry-run to delete these sessions.${RESET}`);
+          return;
+        }
+
+        // Require confirmation unless --yes
+        if (!opts.yes) {
+          console.log(`\n${BOLD}${RED}Permanently delete ${sessions.length} session(s) with status: ${opts.status}?${RESET}\n`);
+          console.log(`  ${RED}Warning: This cannot be undone!${RESET}\n`);
+          console.log(`  ${GRAY}Sessions:${RESET}`);
+          for (const s of sessions.slice(0, 5)) {
+            const title = s.title || '(no title)';
+            console.log(`    ${GRAY}${s.id.slice(0, 8)}${RESET}  ${title.slice(0, 40)}`);
+          }
+          if (sessions.length > 5) {
+            console.log(`    ${GRAY}... and ${sessions.length - 5} more${RESET}`);
+          }
+          console.log();
+
+          const rl = require('node:readline').createInterface({
+            input: process.stdin,
+            output: process.stderr,
+          });
+
+          const answer = await new Promise<string>((resolve) => {
+            rl.question(`  ${RED}Are you sure? Type 'yes' to confirm:${RESET} `, (ans: string) => {
+              rl.close();
+              resolve(ans.trim().toLowerCase());
+            });
+          });
+
+          if (answer !== 'yes') {
+            log.info('Aborted.');
+            return;
+          }
+        }
+
+        // Delete all matching sessions
+        let deleted = 0;
+        let errors = 0;
+        for (const s of sessions) {
+          try {
+            await requestDaemon('session.delete', { id: s.id });
+            deleted++;
+          } catch {
+            errors++;
+          }
+        }
+
+        log.success(`Deleted ${deleted} session(s)${errors > 0 ? `, ${errors} error(s)` : ''}`);
+        return;
+      }
+
+      // Single session delete mode
+      if (!id) {
+        log.error('Session ID required. Use --status and --all for batch delete.');
+        console.log(`  ${GRAY}Examples:${RESET}`);
+        console.log(`    ${GRAY}ah session delete <id>${RESET}`);
+        console.log(`    ${GRAY}ah session delete --status archived --all${RESET}`);
+        console.log(`    ${GRAY}ah session delete --status archived --all --dry-run${RESET}`);
+        process.exit(1);
+      }
+
+      // Get session info for confirmation message
+      const info = await requestDaemon<{
+        session: { id: string; title: string | null; status: string; agentName?: string };
+      }>('session.show', { id });
+
+      const session = info.session;
+
+      // Require confirmation unless --yes is passed
+      if (!opts.yes) {
+        process.stderr.write(`\n  ${BOLD}${RED}Permanently delete session?${RESET}\n`);
+        process.stderr.write(`  ${RED}Warning: This cannot be undone!${RESET}\n\n`);
+        process.stderr.write(`  ${GRAY}Title:${RESET}   ${session.title || '(no title)'}\n`);
+        process.stderr.write(`  ${GRAY}ID:${RESET}      ${session.id}\n`);
+        if (session.agentName) {
+          process.stderr.write(`  ${GRAY}Agent:${RESET}   ${session.agentName}\n`);
+        }
+        process.stderr.write(`  ${GRAY}Status:${RESET}  ${session.status}\n\n`);
+
+        const rl = require('node:readline').createInterface({
+          input: process.stdin,
+          output: process.stderr,
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(`  ${RED}Are you sure? Type 'yes' to confirm:${RESET} `, (ans: string) => {
+            rl.close();
+            resolve(ans.trim().toLowerCase());
+          });
+        });
+
+        if (answer !== 'yes') {
+          log.info('Aborted.');
+          return;
+        }
+      }
+
+      await requestDaemon('session.delete', { id });
+      log.success(`Session deleted: ${BOLD}${session.title || session.id}${RESET}`);
+    });
+
   // --- Session restore: list recent sessions and optionally resume one ---
   session
     .command('restore [id]')
