@@ -456,6 +456,15 @@ export class AgentNetworkDaemonServer {
         return { taskGroup: this.store.archiveTaskGroup(id) };
       }
 
+      case 'task.update': {
+        const id = expectString(request.params?.id, 'id');
+        const taskGroup = this.store.updateTaskGroup(id, {
+          title: typeof request.params?.title === 'string' ? request.params.title : undefined,
+          status: typeof request.params?.status === 'string' ? request.params.status : undefined,
+        });
+        return { taskGroup };
+      }
+
       case 'session.list': {
         let agentId: string | undefined;
         if (typeof request.params?.agentRef === 'string' && request.params.agentRef.trim()) {

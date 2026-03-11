@@ -263,4 +263,34 @@ export function registerTaskCommand(program: Command): void {
       await requestDaemon('task.archive', { id });
       log.success(`Task group archived: ${BOLD}${tg.title || tg.id}${RESET}`);
     });
+
+  task
+    .command('update <id>')
+    .description('Update a task group')
+    .option('--title <title>', 'New title for the task group')
+    .option('--status <status>', 'New status (active|archived|paused|completed)')
+    .action(async (id: string, opts: { title?: string; status?: string }) => {
+      await ensureDaemonRunning();
+
+      if (!opts.title && !opts.status) {
+        log.error('Please specify at least one field to update (--title or --status)');
+        process.exit(1);
+      }
+
+      const result = await requestDaemon<{
+        taskGroup: { id: string; title: string; status: string };
+      }>('task.update', {
+        id,
+        title: opts.title,
+        status: opts.status,
+      });
+
+      const tg = result.taskGroup;
+      const changes: string[] = [];
+      if (opts.title) changes.push(`title: "${tg.title}"`);
+      if (opts.status) changes.push(`status: ${tg.status}`);
+
+      log.success(`Task group updated: ${BOLD}${tg.id.slice(0, 7)}${RESET}`);
+      console.log(`  ${GRAY}${changes.join(', ')}${RESET}`);
+    });
 }

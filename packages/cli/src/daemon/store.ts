@@ -499,6 +499,23 @@ export class DaemonStore {
     return this.getTaskGroup(taskGroupId)!;
   }
 
+  updateTaskGroup(taskGroupId: string, input: { title?: string; status?: string }): TaskGroup {
+    const current = this.getTaskGroup(taskGroupId);
+    if (!current) throw new Error(`Task group not found: ${taskGroupId}`);
+
+    const update: Record<string, SqlPrimitive> = {
+      updated_at: nowIso(),
+    };
+
+    if (input.title !== undefined) update.title = input.title;
+    if (input.status !== undefined) update.status = input.status;
+
+    const built = buildSetClause(update);
+    this.db.prepare(`UPDATE task_groups SET ${built.clause} WHERE id = ?`).run(...built.params, taskGroupId);
+
+    return this.getTaskGroup(taskGroupId)!;
+  }
+
   createSession(input: CreateSessionInput): SessionRecord {
     const now = nowIso();
     const id = input.id ?? randomUUID();
