@@ -86,6 +86,7 @@ export function registerAgentCommand(program: Command): void {
 
       if (result.agents.length === 0) {
         log.info('No local agents registered.');
+        console.log(`\n  ${GRAY}Tip: Run 'ah agent add --name <name> --project <path>' to register an agent.${RESET}`);
         return;
       }
 

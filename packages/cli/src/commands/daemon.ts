@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { readFileSync } from 'node:fs';
+import { readFileSync, watchFile, unwatchFile, statSync } from 'node:fs';
 import { AgentNetworkDaemonServer } from '../daemon/server.js';
 import { DaemonStore } from '../daemon/store.js';
 import { getDaemonLogPath } from '../daemon/paths.js';
@@ -185,20 +185,66 @@ export function registerDaemonCommand(program: Command): void {
     .command('logs')
     .description('Show daemon logs')
     .option('-n, --lines <n>', 'Lines to show', '50')
-    .action(async (opts: { lines: string }) => {
+    .option('-f, --follow', 'Follow log output (tail -f style)')
+    .action(async (opts: { lines: string; follow?: boolean }) => {
       await ensureDaemonRunning();
       const runtime = await getDaemonRuntimeInfo();
       if (runtime?.uiBaseUrl) {
         console.log(`  ${formatUiUrlMessage(runtime.uiBaseUrl)}`);
       }
+      const logPath = getDaemonLogPath();
       const count = Number.parseInt(opts.lines, 10);
-      const lines = tailLog(getDaemonLogPath(), Number.isFinite(count) ? count : 50);
-      if (lines.length === 0) {
+      const lines = tailLog(logPath, Number.isFinite(count) ? count : 50);
+      
+      if (lines.length === 0 && !opts.follow) {
         log.info('No daemon logs yet.');
         return;
       }
+
+      // Print initial lines
       for (const line of lines) {
         console.log(line);
+      }
+
+      // If --follow flag is set, watch the file for changes
+      if (opts.follow) {
+        let lastSize = 0;
+        try {
+          lastSize = statSync(logPath).size;
+        } catch {
+          lastSize = 0;
+        }
+
+        console.log(`${GRAY}--- following logs (Ctrl+C to stop) ---${RESET}`);
+
+        watchFile(logPath, { interval: 500 }, (curr) => {
+          if (curr.size > lastSize) {
+            // Read new content
+            try {
+              const fd = require('node:fs').openSync(logPath, 'r');
+              const buffer = Buffer.alloc(curr.size - lastSize);
+              require('node:fs').readSync(fd, buffer, 0, buffer.length, lastSize);
+              require('node:fs').closeSync(fd);
+              const newContent = buffer.toString('utf-8');
+              const newLines = newContent.split('\n').filter((l: string) => l.length > 0);
+              for (const newLine of newLines) {
+                console.log(newLine);
+              }
+              lastSize = curr.size;
+            } catch {
+              // Ignore read errors
+            }
+          }
+        });
+
+        // Handle graceful shutdown
+        process.on('SIGINT', () => {
+          unwatchFile(logPath);
+          process.exit(0);
+        });
+
+        // Keep process alive
+        process.stdin.resume();
       }
     });
 
