@@ -3,7 +3,7 @@ import { createInterface } from 'node:readline';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { log } from '../utils/logger.js';
-import { BOLD, GRAY, GREEN, RED, RESET, YELLOW, renderTable, type Column } from '../utils/table.js';
+import { BOLD, GRAY, GREEN, RED, RESET, YELLOW, BLUE, renderTable, type Column } from '../utils/table.js';
 import { parseTagFlags, runLocalChat } from './local-runtime.js';
 
 export function registerSessionCommand(program: Command): void {
@@ -116,14 +116,108 @@ export function registerSessionCommand(program: Command): void {
     .command('show <id>')
     .description('Show one session and its messages')
     .option('--json', 'Output JSON')
-    .action(async (id: string, opts: { json?: boolean }) => {
+    .option('--messages', 'Show recent messages')
+    .option('--limit <number>', 'Number of messages to show', '20')
+    .action(async (id: string, opts: { json?: boolean; messages?: boolean; limit?: string }) => {
       await ensureDaemonRunning();
-      const result = await requestDaemon('session.show', { id });
+      try {
+        const result = await requestDaemon<{
+          session: {
+            id: string;
+            title: string | null;
+            status: string;
+            lastActiveAt: string;
+            agentId: string;
+            agentName?: string;
+            createdAt?: string;
+            tags?: string[];
+          };
+          messages?: Array<{ role: string; content: string; createdAt?: string }>;
+        }>('session.show', { id });
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
         return;
       }
-      console.log(JSON.stringify(result, null, 2));
+
+      // Human-readable output
+      const session = result.session;
+      const statusConfig: Record<string, { color: string; symbol: string }> = {
+        running: { color: GREEN, symbol: '●' },
+        active: { color: GREEN, symbol: '●' },
+        idle: { color: GRAY, symbol: '○' },
+        paused: { color: YELLOW, symbol: '◐' },
+        failed: { color: RED, symbol: '✗' },
+        completed: { color: GRAY, symbol: '✓' },
+        archived: { color: GRAY, symbol: '◇' },
+        queued: { color: GRAY, symbol: '○' },
+      };
+      const config = statusConfig[session.status] || { color: GRAY, symbol: '○' };
+
+      // Format relative time
+      const formatRelativeTime = (dateStr: string): string => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffMins < 1) return 'just now';
+        if (diffMins < 60) return `${diffMins} minutes ago`;
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        if (diffDays === 1) return 'yesterday';
+        return `${diffDays} days ago`;
+      };
+
+      // Header
+      console.log(`\n${BOLD}Session Details${RESET}\n`);
+
+      // Session info table
+      console.log(`  ${GRAY}ID:${RESET}      ${session.id}`);
+      console.log(`  ${GRAY}Title:${RESET}   ${session.title || '(no title)'}`);
+      console.log(`  ${GRAY}Status:${RESET}  ${config.color}${config.symbol} ${session.status}${RESET}`);
+      console.log(`  ${GRAY}Agent:${RESET}   ${session.agentName || session.agentId?.slice(0, 12) || '-'}`);
+      if (session.createdAt) {
+        console.log(`  ${GRAY}Created:${RESET} ${formatRelativeTime(session.createdAt)}`);
+      }
+      console.log(`  ${GRAY}Active:${RESET}  ${formatRelativeTime(session.lastActiveAt)}`);
+      if (session.tags && session.tags.length > 0) {
+        console.log(`  ${GRAY}Tags:${RESET}    ${session.tags.join(', ')}`);
+      }
+
+      // Messages section
+      const messages = result.messages || [];
+      if (opts.messages && messages.length > 0) {
+        const limit = parseInt(opts.limit ?? '20', 10);
+        const displayMessages = messages.slice(-limit);
+
+        console.log(`\n${BOLD}Recent Messages${RESET} (${displayMessages.length}/${messages.length})\n`);
+
+        for (const msg of displayMessages) {
+          const roleLabel = msg.role === 'user' ? `${GREEN}You${RESET}` : `${BLUE}Agent${RESET}`;
+          const contentLines = msg.content.split('\n');
+          const preview = contentLines.length > 1
+            ? contentLines[0].slice(0, 100) + '...'
+            : msg.content.slice(0, 200) + (msg.content.length > 200 ? '...' : '');
+
+          console.log(`  ${GRAY}[${roleLabel}${GRAY}]${RESET}`);
+          console.log(`  ${preview}`);
+          console.log();
+        }
+      } else if (messages.length > 0) {
+        console.log(`\n  ${GRAY}(${messages.length} messages, use --messages to view)${RESET}`);
+      }
+      console.log();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) {
+          log.error(`Session not found: ${BOLD}${id}${RESET}`);
+          console.log(`\n  ${GRAY}Tip: Use 'ah session list' to see available sessions.${RESET}`);
+        } else {
+          log.error(`Failed to show session: ${message}`);
+        }
+        process.exit(1);
+      }
     });
 
   session
@@ -186,7 +280,8 @@ export function registerSessionCommand(program: Command): void {
     .command('restore [id]')
     .description('Restore a recent session to continue chatting (lists recent sessions if no id provided)')
     .option('--limit <number>', 'Number of recent sessions to show', '10')
-    .action(async (id: string | undefined, opts: { limit?: string }) => {
+    .option('--last', 'Restore the most recent session automatically (no prompt)')
+    .action(async (id: string | undefined, opts: { limit?: string; last?: boolean }) => {
       await ensureDaemonRunning();
 
       const limit = parseInt(opts.limit ?? '10', 10);
@@ -216,6 +311,21 @@ export function registerSessionCommand(program: Command): void {
           agentId: string;
         }>;
       }>('session.list', { status: 'active,idle,paused' });
+
+      // If --last flag provided, auto-restore most recent session
+      if (opts.last && result.sessions.length > 0) {
+        const mostRecent = result.sessions[0];
+        log.info(`Restoring most recent session: ${BOLD}${mostRecent.title || mostRecent.id}${RESET}`);
+        console.log(`${GRAY}Session ID: ${mostRecent.id}${RESET}`);
+        console.log(`${GRAY}Status: ${mostRecent.status}${RESET}\n`);
+        await interactiveSessionResume(mostRecent.id);
+        return;
+      }
+
+      if (opts.last && result.sessions.length === 0) {
+        log.info('No recent sessions found. Start a new chat with "ah chat <agent>"');
+        return;
+      }
 
       const recentSessions = result.sessions.slice(0, limit);
 
@@ -257,6 +367,8 @@ export function registerSessionCommand(program: Command): void {
 
       console.log(`\n${GRAY}Enter the number to resume that session, or 'q' to quit.${RESET}`);
 
+      let isResuming = false;
+
       const rl = createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -282,15 +394,23 @@ export function registerSessionCommand(program: Command): void {
         }
 
         const selectedSession = recentSessions[choiceNum - 1];
-        rl.close();
 
         console.log(`\n${GRAY}Resuming session: ${BOLD}${selectedSession.title || selectedSession.id}${RESET}\n`);
 
+        // Mark that we're resuming so the close handler doesn't exit
+        isResuming = true;
+        rl.close();
+
+        // Resume the session (this takes over the terminal)
         await interactiveSessionResume(selectedSession.id);
       });
 
       rl.on('close', () => {
-        process.exit(0);
+        // Only exit if we're NOT resuming a session
+        // (i.e., user pressed 'q' to quit)
+        if (!isResuming) {
+          process.exit(0);
+        }
       });
     });
 }
