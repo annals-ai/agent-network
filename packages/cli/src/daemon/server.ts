@@ -612,7 +612,7 @@ export class AgentNetworkDaemonServer {
                   tags,
                 });
 
-                this.schedulePlatformSessionSync(session.id);
+                this.runtime.schedulePlatformSessionSync(session.id);
 
                 return {
                   index,

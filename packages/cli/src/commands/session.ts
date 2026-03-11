@@ -411,31 +411,40 @@ export function registerSessionCommand(program: Command): void {
       }
     });
 
-  // --- Session start: start one or more sessions in parallel ---
+  // --- Session start: start one or more agent sessions in parallel ---
   session
-    .command('start <ids...>')
-    .description('Start one or more sessions in parallel (space-separated IDs)')
-    .option('--parallel <number>', 'Max concurrent starts', '4')
+    .command('start <agents...>')
+    .description('Start sessions for one or more agents in parallel (space-separated agent refs)')
+    .option('--parallel <number>', 'Max concurrent sessions', '4')
+    .option('--task-group <id>', 'Bind all sessions to a task group')
+    .option('--tag <tag...>', 'Add tags to all sessions')
     .option('--json', 'Output JSON')
-    .action(async (ids: string[], opts: { parallel?: string; json?: boolean }) => {
+    .action(async (agents: string[], opts: { parallel?: string; taskGroup?: string; tag?: string[]; json?: boolean }) => {
       await ensureDaemonRunning();
 
-      if (ids.length === 0) {
-        log.error('Session ID(s) required');
-        console.log(`  ${GRAY}Usage: ah session start <id1> <id2> ...${RESET}`);
+      if (agents.length === 0) {
+        log.error('Agent reference(s) required');
+        console.log(`  ${GRAY}Usage: ah session start <agent1> <agent2> ...${RESET}`);
         process.exit(1);
       }
 
       const maxParallel = Math.max(1, Math.min(parseInt(opts.parallel ?? '4', 10) || 4, 20));
 
-      // Call daemon to start sessions in parallel
+      // Call daemon to start agents in parallel (creates idle sessions)
       const result = await requestDaemon<{
         results: Array<{
-          id: string;
+          index: number;
+          agentRef: string;
+          sessionId?: string;
           status: string;
           error?: string;
         }>;
-      }>('session.start', { ids, maxParallel });
+      }>('session.startAgents', {
+        agentRefs: agents,
+        maxParallel,
+        taskGroupId: opts.taskGroup,
+        tags: parseTagFlags(opts.tag),
+      });
 
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
@@ -443,18 +452,18 @@ export function registerSessionCommand(program: Command): void {
       }
 
       // Display results
-      console.log(`\n${BOLD}Starting Sessions${RESET}\n`);
+      console.log(`\n${BOLD}Starting Agent Sessions${RESET}\n`);
 
       for (const r of result.results) {
-        if (r.error) {
-          console.log(`${RED}✗${RESET} ${BOLD}${r.id.slice(0, 8)}...${RESET} ${RED}${r.error}${RESET}`);
+        if (r.status === 'error') {
+          console.log(`${RED}✗${RESET} ${BOLD}${r.agentRef}${RESET} ${RED}${r.error}${RESET}`);
         } else {
-          console.log(`${GREEN}✓${RESET} ${BOLD}${r.id.slice(0, 8)}...${RESET} ${GRAY}→ ${r.status}${RESET}`);
+          console.log(`${GREEN}✓${RESET} ${BOLD}${r.agentRef}${RESET} ${GRAY}→ session: ${r.sessionId?.slice(0, 8)}...${RESET} ${YELLOW}(idle)${RESET}`);
         }
       }
 
-      const success = result.results.filter(r => !r.error).length;
-      const errors = result.results.filter(r => r.error).length;
+      const success = result.results.filter(r => r.status !== 'error').length;
+      const errors = result.results.filter(r => r.status === 'error').length;
       console.log(`\n${GRAY}Started: ${success}, Errors: ${errors}${RESET}`);
     });
 
