@@ -295,11 +295,47 @@ export function registerSessionCommand(program: Command): void {
   session
     .command('archive <id>')
     .description('Archive a session')
-    .action(async (id: string) => {
+    .option('-y, --yes', 'Skip confirmation prompt')
+    .action(async (id: string, opts: { yes?: boolean }) => {
       await ensureDaemonRunning();
-      const result = await requestDaemon<{ session: { id: string; status: string } }>('session.archive', { id });
-      log.success(`Session archived: ${result.session.id}`);
-      console.log(`  ${GRAY}status${RESET} ${result.session.status}`);
+
+      // Get session info for confirmation message
+      const info = await requestDaemon<{
+        session: { id: string; title: string | null; status: string; agentName?: string };
+      }>('session.show', { id });
+
+      const session = info.session;
+
+      // Require confirmation unless --yes is passed
+      if (!opts.yes) {
+        process.stderr.write(`\n  ${BOLD}Archive session?${RESET}\n`);
+        process.stderr.write(`  ${GRAY}Title:${RESET}   ${session.title || '(no title)'}\n`);
+        process.stderr.write(`  ${GRAY}ID:${RESET}      ${session.id}\n`);
+        if (session.agentName) {
+          process.stderr.write(`  ${GRAY}Agent:${RESET}   ${session.agentName}\n`);
+        }
+        process.stderr.write(`  ${GRAY}Status:${RESET}  ${session.status}\n\n`);
+
+        const rl = require('node:readline').createInterface({
+          input: process.stdin,
+          output: process.stderr,
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(`  Are you sure? [y/N] `, (ans: string) => {
+            rl.close();
+            resolve(ans.trim().toLowerCase());
+          });
+        });
+
+        if (answer !== 'y' && answer !== 'yes') {
+          log.info('Aborted.');
+          return;
+        }
+      }
+
+      await requestDaemon('session.archive', { id });
+      log.success(`Session archived: ${BOLD}${session.title || session.id}${RESET}`);
     });
 
   // --- Session restore: list recent sessions and optionally resume one ---

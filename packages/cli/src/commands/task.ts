@@ -224,9 +224,43 @@ export function registerTaskCommand(program: Command): void {
   task
     .command('archive <id>')
     .description('Archive a task group')
-    .action(async (id: string) => {
+    .option('-y, --yes', 'Skip confirmation prompt')
+    .action(async (id: string, opts: { yes?: boolean }) => {
       await ensureDaemonRunning();
-      const result = await requestDaemon<{ taskGroup: { title: string } }>('task.archive', { id });
-      log.success(`Task group archived: ${result.taskGroup.title}`);
+
+      // Get task group info for confirmation message
+      const result = await requestDaemon<{
+        taskGroup: { id: string; title: string; status: string; sessionCount: number };
+      }>('task.show', { id });
+
+      const tg = result.taskGroup;
+
+      // Require confirmation unless --yes is passed
+      if (!opts.yes) {
+        process.stderr.write(`\n  ${BOLD}Archive task group?${RESET}\n`);
+        process.stderr.write(`  ${GRAY}Title:${RESET}     ${tg.title || '(no title)'}\n`);
+        process.stderr.write(`  ${GRAY}ID:${RESET}        ${tg.id}\n`);
+        process.stderr.write(`  ${GRAY}Sessions:${RESET}  ${tg.sessionCount ?? 0}\n\n`);
+
+        const rl = require('node:readline').createInterface({
+          input: process.stdin,
+          output: process.stderr,
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(`  Are you sure? [y/N] `, (ans: string) => {
+            rl.close();
+            resolve(ans.trim().toLowerCase());
+          });
+        });
+
+        if (answer !== 'y' && answer !== 'yes') {
+          log.info('Aborted.');
+          return;
+        }
+      }
+
+      await requestDaemon('task.archive', { id });
+      log.success(`Task group archived: ${BOLD}${tg.title || tg.id}${RESET}`);
     });
 }
