@@ -14,6 +14,7 @@ import { registerDaemonCommand } from './commands/daemon.js';
 import { registerTaskCommand } from './commands/task.js';
 import { registerSessionCommand } from './commands/session.js';
 import { registerUiCommand } from './commands/ui.js';
+import { registerMcpCommand } from './commands/mcp.js';
 import { maybeAutoUpgradeOnStartup } from './utils/auto-updater.js';
 import { maybePrintDocsHint } from './utils/config.js';
 
@@ -55,6 +56,7 @@ registerCallCommand(program);
 registerSubscribeCommand(program);
 registerProfileCommand(program);
 registerFanOutCommand(program);
+registerMcpCommand(program);
 
 program
   .command('help')

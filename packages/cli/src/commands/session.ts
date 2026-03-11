@@ -1,8 +1,9 @@
 import type { Command } from 'commander';
+import { createInterface } from 'node:readline';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { log } from '../utils/logger.js';
-import { BOLD, GRAY, RESET } from '../utils/table.js';
+import { BOLD, GRAY, GREEN, RESET, YELLOW } from '../utils/table.js';
 import { parseTagFlags, runLocalChat } from './local-runtime.js';
 
 export function registerSessionCommand(program: Command): void {
@@ -99,4 +100,147 @@ export function registerSessionCommand(program: Command): void {
       log.success(`Session archived: ${result.session.id}`);
       console.log(`  ${GRAY}status${RESET} ${result.session.status}`);
     });
+
+  // --- Session restore: list recent sessions and optionally resume one ---
+  session
+    .command('restore [id]')
+    .description('Restore a recent session to continue chatting (lists recent sessions if no id provided)')
+    .option('--limit <number>', 'Number of recent sessions to show', '10')
+    .action(async (id: string | undefined, opts: { limit?: string }) => {
+      await ensureDaemonRunning();
+
+      const limit = parseInt(opts.limit ?? '10', 10);
+
+      // If session ID provided directly, restore it
+      if (id) {
+        const sessionInfo = await requestDaemon<{
+          session: { id: string; title: string | null; status: string; lastActiveAt: string };
+        }>('session.show', { id });
+
+        log.info(`Resuming session: ${BOLD}${sessionInfo.session.title || sessionInfo.session.id}${RESET}`);
+        console.log(`${GRAY}Session ID: ${sessionInfo.session.id}${RESET}`);
+        console.log(`${GRAY}Status: ${sessionInfo.session.status}${RESET}\n`);
+
+        // Start interactive chat with this session
+        await interactiveSessionResume(id);
+        return;
+      }
+
+      // Otherwise, list recent sessions for user to choose
+      const result = await requestDaemon<{
+        sessions: Array<{
+          id: string;
+          title: string | null;
+          status: string;
+          lastActiveAt: string;
+          agentId: string;
+        }>;
+      }>('session.list', { status: 'active,idle,paused' });
+
+      const recentSessions = result.sessions.slice(0, limit);
+
+      if (recentSessions.length === 0) {
+        log.info('No recent sessions found. Start a new chat with "ah chat <agent>"');
+        return;
+      }
+
+      // Display sessions with numbers for selection
+      console.log(`\n${BOLD}Recent Sessions${RESET} (showing ${recentSessions.length} most recent):\n`);
+      console.log(`  ${GRAY}#  Status   Last Active            Title / ID${RESET}`);
+      console.log(`  ${GRAY}-- -------- ---------------------- -----------------${RESET}`);
+
+      const now = new Date();
+      for (let i = 0; i < recentSessions.length; i++) {
+        const s = recentSessions[i];
+        const statusColor = s.status === 'active' ? GREEN : s.status === 'idle' ? YELLOW : GRAY;
+        const statusStr = `${statusColor}${s.status.padEnd(8)}${RESET}`;
+
+        // Format relative time
+        const lastActive = new Date(s.lastActiveAt);
+        const diffMs = now.getTime() - lastActive.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        let timeStr: string;
+        if (diffMins < 1) timeStr = 'just now';
+        else if (diffMins < 60) timeStr = `${diffMins}m ago`;
+        else if (diffHours < 24) timeStr = `${diffHours}h ago`;
+        else timeStr = `${diffDays}d ago`;
+
+        const title = s.title || '(untitled)';
+        const titleDisplay = title.length > 25 ? title.slice(0, 22) + '...' : title;
+
+        console.log(`  ${GREEN}${(i + 1).toString().padStart(2)}${RESET}  ${statusStr}  ${GRAY}${timeStr.padEnd(8)}${RESET}  ${titleDisplay}`);
+        console.log(`           ${GRAY}${s.id.slice(0, 40)}...${RESET}`);
+      }
+
+      console.log(`\n${GRAY}Enter the number to resume that session, or 'q' to quit.${RESET}`);
+
+      const rl = createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        prompt: `${GREEN}> ${RESET}`,
+      });
+
+      rl.prompt();
+
+      rl.on('line', async (line: string) => {
+        const trimmed = line.trim().toLowerCase();
+
+        if (trimmed === 'q' || trimmed === 'quit' || trimmed === 'exit') {
+          rl.close();
+          return;
+        }
+
+        const choiceNum = parseInt(trimmed, 10);
+
+        if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > recentSessions.length) {
+          console.log(`${YELLOW}Invalid choice. Enter a number between 1 and ${recentSessions.length}, or 'q' to quit.${RESET}`);
+          rl.prompt();
+          return;
+        }
+
+        const selectedSession = recentSessions[choiceNum - 1];
+        rl.close();
+
+        console.log(`\n${GRAY}Resuming session: ${BOLD}${selectedSession.title || selectedSession.id}${RESET}\n`);
+
+        await interactiveSessionResume(selectedSession.id);
+      });
+
+      rl.on('close', () => {
+        process.exit(0);
+      });
+    });
+}
+
+/**
+ * Start interactive chat session to resume an existing session
+ */
+async function interactiveSessionResume(sessionId: string): Promise<void> {
+  // Get session info first
+  const sessionInfo = await requestDaemon<{
+    session: { id: string; title: string | null; status: string };
+    messages: Array<{ role: string; content: string }>;
+  }>('session.show', { id: sessionId });
+
+  // Show recent message history
+  const recentMessages = sessionInfo.messages.slice(-6); // Last 3 exchanges
+
+  if (recentMessages.length > 0) {
+    console.log(`${GRAY}--- Recent conversation ---${RESET}\n`);
+    for (const msg of recentMessages) {
+      const roleDisplay = msg.role === 'user' ? `${GREEN}You:${RESET}` : `${GRAY}Agent:${RESET}`;
+      const contentPreview = msg.content.length > 100 ? msg.content.slice(0, 100) + '...' : msg.content;
+      console.log(`${roleDisplay} ${contentPreview}\n`);
+    }
+    console.log(`${GRAY}--- Continue conversation ---${RESET}\n`);
+  }
+
+  // Start the interactive chat
+  await runLocalChat({
+    sessionId,
+    message: '', // Empty message triggers interactive mode
+  });
 }

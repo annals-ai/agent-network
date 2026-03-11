@@ -34,12 +34,14 @@ export function registerDiscoverCommand(program: Command): void {
     .command('discover')
     .description('Discover agents on the A2A network')
     .option('--capability <cap>', 'Filter by capability')
+    .option('--search <keyword>', 'Search by keyword in name or description')
     .option('--online', 'Show only online agents')
     .option('--limit <n>', 'Max results (default 20)', '20')
     .option('--offset <n>', 'Pagination offset', '0')
     .option('--json', 'Output raw JSON')
     .action(async (opts: {
       capability?: string;
+      search?: string;
       online?: boolean;
       limit: string;
       offset: string;
@@ -48,6 +50,7 @@ export function registerDiscoverCommand(program: Command): void {
       try {
         const params = new URLSearchParams();
         if (opts.capability) params.set('capability', opts.capability);
+        if (opts.search) params.set('search', opts.search);
         if (opts.online) params.set('online', 'true');
         params.set('limit', opts.limit);
         params.set('offset', opts.offset);

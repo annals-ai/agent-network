@@ -4,6 +4,8 @@ import { requestDaemon } from '../daemon/client.js';
 import { listProviders } from '../providers/index.js';
 import { log } from '../utils/logger.js';
 import { BOLD, GRAY, RESET } from '../utils/table.js';
+import { getDaemonLogPath } from '../daemon/paths.js';
+import { readFileSync } from 'node:fs';
 
 function parseCapabilities(raw: string | undefined): string[] | undefined {
   if (!raw) return undefined;
