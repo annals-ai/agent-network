@@ -76,6 +76,7 @@ export function registerDiscoverCommand(program: Command): void {
 
         if (data.agents.length === 0) {
           console.log('  No agents found.');
+          console.log(`\n  ${GRAY}Tip: Try different search terms or use 'ah agent expose' to publish your agent.${RESET}`);
           return;
         }
 

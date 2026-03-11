@@ -87,6 +87,7 @@ export function registerSubscribeCommand(program: Command): void {
 
         if (data.subscriptions.length === 0) {
           console.log('  No subscriptions yet.');
+          console.log(`\n  ${GRAY}Tip: Use 'ah subscribe <author-login>' to subscribe to an author.${RESET}`);
           return;
         }
 

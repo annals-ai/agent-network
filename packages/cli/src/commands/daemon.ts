@@ -176,6 +176,8 @@ export function registerDaemonCommand(program: Command): void {
         console.log(`  ${GRAY}Socket${RESET}     ${status.socketPath}`);
         console.log(`  ${GRAY}Log${RESET}        ${status.logPath}`);
         console.log('');
+        console.log(`  ${GRAY}Tip: Run 'ah daemon start' to start the daemon.${RESET}`);
+        console.log('');
       }
     });
 

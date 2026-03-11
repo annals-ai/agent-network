@@ -82,6 +82,8 @@ export function registerStatusCommand(program: Command): void {
           console.log(`Daemon: ${daemon.running ? `${GREEN}running${RESET}` : `${YELLOW}stopped${RESET}`}`);
           console.log(`Socket: ${daemon.socketPath}`);
           console.log(`Log:    ${daemon.logPath}`);
+          console.log('');
+          console.log(`${GRAY}Tip: Run 'ah daemon start' to start the daemon.${RESET}`);
         }
       }
 
