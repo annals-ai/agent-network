@@ -21,6 +21,7 @@ import { registerUiCommand } from './commands/ui.js';
 import { registerMcpCommand } from './commands/mcp.js';
 import { registerConfigCommand } from './commands/config.js';
 import { registerDoctorCommand } from './commands/doctor.js';
+import { registerPipelineCommand } from './commands/pipeline.js';
 import { maybeAutoUpgradeOnStartup } from './utils/auto-updater.js';
 import { maybePrintDocsHint } from './utils/config.js';
 
@@ -69,6 +70,7 @@ registerFanOutCommand(program);
 registerMcpCommand(program);
 registerConfigCommand(program);
 registerDoctorCommand(program);
+registerPipelineCommand(program);
 
 program
   .command('help')
