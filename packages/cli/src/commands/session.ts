@@ -281,7 +281,8 @@ export function registerSessionCommand(program: Command): void {
     .description('Restore a recent session to continue chatting (lists recent sessions if no id provided)')
     .option('--limit <number>', 'Number of recent sessions to show', '10')
     .option('--last', 'Restore the most recent session automatically (no prompt)')
-    .action(async (id: string | undefined, opts: { limit?: string; last?: boolean }) => {
+    .option('--json', 'Output JSON')
+    .action(async (id: string | undefined, opts: { limit?: string; last?: boolean; json?: boolean }) => {
       await ensureDaemonRunning();
 
       const limit = parseInt(opts.limit ?? '10', 10);
@@ -291,6 +292,11 @@ export function registerSessionCommand(program: Command): void {
         const sessionInfo = await requestDaemon<{
           session: { id: string; title: string | null; status: string; lastActiveAt: string };
         }>('session.show', { id });
+
+        if (opts.json) {
+          console.log(JSON.stringify(sessionInfo, null, 2));
+          return;
+        }
 
         log.info(`Resuming session: ${BOLD}${sessionInfo.session.title || sessionInfo.session.id}${RESET}`);
         console.log(`${GRAY}Session ID: ${sessionInfo.session.id}${RESET}`);
@@ -315,6 +321,10 @@ export function registerSessionCommand(program: Command): void {
       // If --last flag provided, auto-restore most recent session
       if (opts.last && result.sessions.length > 0) {
         const mostRecent = result.sessions[0];
+        if (opts.json) {
+          console.log(JSON.stringify({ session: mostRecent }, null, 2));
+          return;
+        }
         log.info(`Restoring most recent session: ${BOLD}${mostRecent.title || mostRecent.id}${RESET}`);
         console.log(`${GRAY}Session ID: ${mostRecent.id}${RESET}`);
         console.log(`${GRAY}Status: ${mostRecent.status}${RESET}\n`);
@@ -323,6 +333,10 @@ export function registerSessionCommand(program: Command): void {
       }
 
       if (opts.last && result.sessions.length === 0) {
+        if (opts.json) {
+          console.log(JSON.stringify({ session: null, error: 'No sessions found' }, null, 2));
+          return;
+        }
         log.info('No recent sessions found. Start a new chat with "ah chat <agent>"');
         return;
       }
@@ -330,7 +344,17 @@ export function registerSessionCommand(program: Command): void {
       const recentSessions = result.sessions.slice(0, limit);
 
       if (recentSessions.length === 0) {
+        if (opts.json) {
+          console.log(JSON.stringify({ sessions: [] }, null, 2));
+          return;
+        }
         log.info('No recent sessions found. Start a new chat with "ah chat <agent>"');
+        return;
+      }
+
+      // JSON output
+      if (opts.json) {
+        console.log(JSON.stringify({ sessions: recentSessions }, null, 2));
         return;
       }
 
