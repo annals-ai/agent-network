@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { cwd } from 'node:process';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { listProviders } from '../providers/index.js';
@@ -470,5 +471,73 @@ export function registerAgentCommand(program: Command): void {
 
       process.stderr.write(`\nOriginal: ${sourceAgent.name} (${sourceAgent.slug})\n`);
       process.stderr.write(`Clone:    ${newAgent.agent.name} (${newAgent.agent.slug})\n`);
+    });
+
+  // Quick agent creation - uses current directory as project path
+  agent
+    .command('quick <name>')
+    .description('Quickly create an agent using the current directory as project path')
+    .option('--runtime-type <type>', 'Runtime type (claude, codex, gemini)', 'claude')
+    .option('--sandbox', 'Enable sandbox/workspace isolation for this agent')
+    .option('--description <text>', 'Agent description')
+    .option('--visibility <visibility>', 'public | private | unlisted', 'private')
+    .option('--expose <provider>', 'Expose the agent via a provider after creation')
+    .action(async (name: string, opts: {
+      runtimeType: string;
+      sandbox?: boolean;
+      description?: string;
+      visibility: 'public' | 'private' | 'unlisted';
+      expose?: string;
+    }) => {
+      await ensureDaemonRunning();
+
+      const projectPath = cwd();
+      const slug = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+      log.info(`Creating agent with project: ${GRAY}${projectPath}${RESET}`);
+
+      const result = await requestDaemon<{ agent: { id: string; slug: string; name: string } }>('agent.add', {
+        name,
+        slug,
+        runtimeType: opts.runtimeType,
+        projectPath,
+        sandbox: opts.sandbox === true,
+        description: opts.description,
+        visibility: opts.visibility,
+      });
+
+      log.success(`Agent created: ${BOLD}${result.agent.name}${RESET} (${result.agent.slug})`);
+      console.log(`  ${GRAY}ID:${RESET}     ${result.agent.id}`);
+      console.log(`  ${GRAY}Slug:${RESET}   ${result.agent.slug}`);
+      console.log(`  ${GRAY}Runtime:${RESET} ${opts.runtimeType}`);
+
+      // Optionally expose the agent
+      if (opts.expose) {
+        const provider = opts.expose;
+        log.info(`Exposing agent via ${provider}...`);
+        try {
+          const exposeResult = await requestDaemon<{
+            agent: { slug: string };
+            binding: { provider: string; status: string; remoteAgentId?: string | null };
+          }>('agent.expose', {
+            ref: result.agent.slug,
+            provider,
+            config: {},
+          });
+          log.success(`Agent exposed via ${exposeResult.binding.provider}`);
+          if (exposeResult.binding.remoteAgentId) {
+            console.log(`  ${GRAY}Remote ID:${RESET} ${exposeResult.binding.remoteAgentId}`);
+          }
+        } catch (err) {
+          log.error(`Failed to expose agent: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+
+      console.log(`\n  ${GRAY}Next steps:${RESET}`);
+      console.log(`  ${GRAY}•${RESET} Chat with your agent: ${GREEN}ah chat ${result.agent.slug}${RESET}`);
+      if (!opts.expose) {
+        console.log(`  ${GRAY}•${RESET} Expose publicly:      ${GREEN}ah agent expose ${result.agent.slug} --provider agents-hot${RESET}`);
+      }
+      console.log();
     });
 }
