@@ -17,11 +17,15 @@ interface VSCodeMcpServer {
   disabled?: boolean;
 }
 
-interface AhMcpServer {
+export interface AhMcpServer {
   command: string;
   args: string[];
   env?: Record<string, string>;
   disabled?: boolean;
+}
+
+export interface McpConfig {
+  mcpServers?: Record<string, AhMcpServer>;
 }
 
 // --- Helpers ---
@@ -107,10 +111,10 @@ async function importMcpServers(force: boolean = false): Promise<void> {
   displayMcpServers(mcpServers);
 
   // Load existing ah config
-  const config = loadConfig();
+  const config = loadConfig() as BridgeConfig & McpConfig;
 
   // Merge MCP servers
-  const existingMcpServers = (config as BridgeConfig & { mcpServers?: Record<string, AhMcpServer> }).mcpServers || {};
+  const existingMcpServers = config.mcpServers || {};
 
   let merged: Record<string, AhMcpServer>;
   let imported = 0;
@@ -150,7 +154,7 @@ async function importMcpServers(force: boolean = false): Promise<void> {
 }
 
 async function listMcpServers(): Promise<void> {
-  const config = loadConfig() as BridgeConfig & { mcpServers?: Record<string, AhMcpServer> };
+  const config = loadConfig() as BridgeConfig & McpConfig;
   const mcpServers = config.mcpServers || {};
 
   if (Object.keys(mcpServers).length === 0) {
@@ -167,7 +171,7 @@ async function listMcpServers(): Promise<void> {
 }
 
 async function removeMcpServer(name: string): Promise<void> {
-  const config = loadConfig() as BridgeConfig & { mcpServers?: Record<string, AhMcpServer> };
+  const config = loadConfig() as BridgeConfig & McpConfig;
   const mcpServers = config.mcpServers || {};
 
   if (!mcpServers[name]) {
@@ -182,12 +186,100 @@ async function removeMcpServer(name: string): Promise<void> {
   slogSuccess(`Removed MCP server "${name}"`);
 }
 
+async function addMcpServer(
+  name: string,
+  command: string,
+  args: string[] = [],
+  options: { env?: Record<string, string>; disabled?: boolean } = {}
+): Promise<void> {
+  // Validate server name
+  if (!name || name.trim() === '') {
+    outputError('invalid_name', 'Server name is required');
+    return;
+  }
+
+  // Validate command
+  if (!command || command.trim() === '') {
+    outputError('invalid_command', 'Command is required');
+    return;
+  }
+
+  const config = loadConfig() as BridgeConfig & McpConfig;
+  const mcpServers = config.mcpServers || {};
+
+  // Check if server already exists
+  if (mcpServers[name]) {
+    slogWarn(`MCP server "${name}" already exists. Use --force to overwrite.`);
+    process.exit(1);
+  }
+
+  // Build the server config
+  const serverConfig: AhMcpServer = {
+    command: command.trim(),
+    args: args.map(a => a.trim()),
+  };
+
+  if (options.env && Object.keys(options.env).length > 0) {
+    serverConfig.env = options.env;
+  }
+
+  if (options.disabled) {
+    serverConfig.disabled = true;
+  }
+
+  // Add to config
+  mcpServers[name] = serverConfig;
+  config.mcpServers = mcpServers;
+  saveConfig(config);
+
+  const status = options.disabled ? ' (disabled)' : '';
+  slogSuccess(`Added MCP server "${name}": ${command} ${args.join(' ')}${status}`);
+  process.stderr.write(`\nConfig saved to: ${getConfigPath()}\n`);
+}
+
 // --- Registration ---
 
 export function registerMcpCommand(program: Command): void {
   const mcpCmd = program
     .command('mcp')
     .description('Manage MCP servers');
+
+  mcpCmd
+    .command('add <name> <command> [args...]')
+    .description('Add an MCP server')
+    .option('-e, --env <key=value>', 'Environment variable (can be repeated, e.g., -e API_KEY=xxx -e NODE_ENV=prod)', (value: string, prev: string[] = []) => prev.concat(value))
+    .option('--disabled', 'Add the server but keep it disabled')
+    .option('--force', 'Overwrite existing MCP server with the same name')
+    .action(async (name: string, command: string, args: string[], opts: { env?: string[]; disabled?: boolean; force?: boolean }) => {
+      try {
+        // Parse env variables
+        let env: Record<string, string> | undefined;
+        if (opts.env && opts.env.length > 0) {
+          env = {};
+          for (const e of opts.env) {
+            const [key, ...valueParts] = e.split('=');
+            if (!key || valueParts.length === 0) {
+              outputError('invalid_env', `Invalid env format: ${e}. Expected KEY=VALUE`);
+              return;
+            }
+            env[key] = valueParts.join('=');
+          }
+        }
+
+        // Handle --force by removing existing server first
+        if (opts.force) {
+          const config = loadConfig() as BridgeConfig & McpConfig;
+          if (config.mcpServers?.[name]) {
+            delete config.mcpServers[name];
+            saveConfig(config);
+          }
+        }
+
+        await addMcpServer(name, command, args, { env, disabled: opts.disabled });
+      } catch (err) {
+        outputError('add_failed', err instanceof Error ? err.message : String(err));
+      }
+    });
 
   mcpCmd
     .command('import')
