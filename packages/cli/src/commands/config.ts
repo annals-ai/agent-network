@@ -1,7 +1,9 @@
 import { Command } from 'commander';
-import { loadConfig, getConfigPath, getLogsDir, getPidsDir, resolveRuntimeConfig, DEFAULT_RUNTIME_CONFIG } from '../utils/config.js';
+import { loadConfig, saveConfig, getConfigPath, getLogsDir, getPidsDir, resolveRuntimeConfig, DEFAULT_RUNTIME_CONFIG } from '../utils/config.js';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
+import { spawn } from 'node:child_process';
+import { log } from '../utils/logger.js';
 
 export function registerConfigCommand(program: Command): void {
   const configCmd = program
@@ -71,6 +73,56 @@ export function registerConfigCommand(program: Command): void {
     .description('Show configuration file path')
     .action(() => {
       console.log(getConfigPath());
+    });
+
+  configCmd
+    .command('edit')
+    .description('Open configuration file in editor')
+    .option('--editor <editor>', 'Editor to use (defaults to $EDITOR or nano)')
+    .action(async (opts: { editor?: string }) => {
+      const configPath = getConfigPath();
+
+      // Create default config if it doesn't exist
+      if (!existsSync(configPath)) {
+        log.info('Creating default configuration file...');
+        saveConfig({ agents: {} });
+        log.success(`Created: ${configPath}`);
+      }
+
+      // Determine editor
+      const editor = opts.editor || process.env.EDITOR || process.env.VISUAL || 'nano';
+
+      log.info(`Opening config in ${editor}...`);
+
+      // Spawn editor and wait for it to exit
+      const child = spawn(editor, [configPath], {
+        stdio: 'inherit',
+        shell: true,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        child.on('exit', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Editor exited with code ${code}`));
+          }
+        });
+        child.on('error', (err) => {
+          reject(err);
+        });
+      });
+
+      // Validate the edited config
+      try {
+        const config = loadConfig();
+        const agentCount = Object.keys(config.agents || {}).length;
+        log.success('Configuration saved successfully');
+        console.log(`\n  ${agentCount} agent(s) configured`);
+      } catch {
+        log.error('Configuration file contains invalid JSON. Please fix it.');
+        process.exit(1);
+      }
     });
 
   configCmd
