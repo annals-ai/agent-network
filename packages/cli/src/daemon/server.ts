@@ -2,6 +2,7 @@ import { createServer, type Server as NetServer, type Socket } from 'node:net';
 import { unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline';
+import pLimit from 'p-limit';
 import { DaemonRuntime } from './runtime.js';
 import {
   getDaemonDbPath,
@@ -563,6 +564,76 @@ export class AgentNetworkDaemonServer {
           );
           results.push(...batchResults);
         }
+
+        return { results };
+      }
+
+      // --- Start multiple agents in parallel, creating idle sessions ---
+      case 'session.startAgents': {
+        const agentRefs = request.params?.agentRefs;
+        if (!Array.isArray(agentRefs) || agentRefs.length === 0) {
+          throw new Error('agentRefs array is required');
+        }
+        const maxParallel = typeof request.params?.maxParallel === 'number'
+          ? Math.max(1, Math.min(request.params.maxParallel, 20))
+          : 4;
+        const taskGroupId = typeof request.params?.taskGroupId === 'string'
+          ? request.params.taskGroupId
+          : undefined;
+        const tags = normalizeTags(request.params?.tags);
+
+        // Limit concurrent session creations
+        const limit = pLimit(maxParallel);
+
+        // Process each agent in parallel with limit
+        const results = await Promise.all(
+          agentRefs.map((agentRef: string, index: number) =>
+            limit(async () => {
+              try {
+                const agent = this.store.resolveAgentRef(agentRef);
+                if (!agent) {
+                  return {
+                    index,
+                    agentRef,
+                    status: 'error',
+                    error: `Agent not found: ${agentRef}`,
+                  };
+                }
+
+                // Create idle session for this agent
+                const session = this.store.createSession({
+                  agentId: agent.id,
+                  taskGroupId,
+                  origin: 'local_cli',
+                  principalType: 'owner_local',
+                  principalId: 'owner',
+                  status: 'idle',
+                  title: `Session with ${agent.name || agent.slug}`,
+                  tags,
+                });
+
+                this.schedulePlatformSessionSync(session.id);
+
+                return {
+                  index,
+                  agentRef,
+                  sessionId: session.id,
+                  status: 'idle',
+                };
+              } catch (err) {
+                return {
+                  index,
+                  agentRef,
+                  status: 'error',
+                  error: err instanceof Error ? err.message : String(err),
+                };
+              }
+            })
+          )
+        );
+
+        // Sort by original index to preserve order
+        results.sort((a, b) => a.index - b.index);
 
         return { results };
       }
