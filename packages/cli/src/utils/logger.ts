@@ -1,10 +1,4 @@
-const RESET = '\x1b[0m';
-const RED = '\x1b[31m';
-const GREEN = '\x1b[32m';
-const YELLOW = '\x1b[33m';
-const BLUE = '\x1b[34m';
-const GRAY = '\x1b[90m';
-const BOLD = '\x1b[1m';
+import { RESET, CYAN, MAGENTA, BOLD, GRAY, RED, GREEN, YELLOW, BLUE } from './table.js';
 
 function timestamp(): string {
   return new Date().toISOString().slice(11, 19);
@@ -29,6 +23,9 @@ export const log = {
     }
   },
   banner(text: string) {
-    console.log(`\n${BOLD}${text}${RESET}\n`);
+    const line = '─'.repeat(text.length + 4);
+    console.log(`\n${CYAN}┌${line}┐${RESET}`);
+    console.log(`${CYAN}│${RESET}  ${BOLD}${text}${RESET}  ${CYAN}│${RESET}`);
+    console.log(`${CYAN}└${line}┘${RESET}\n`);
   },
 };
