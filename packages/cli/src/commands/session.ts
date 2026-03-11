@@ -17,8 +17,11 @@ export function registerSessionCommand(program: Command): void {
     .option('--agent <ref>', 'Filter by agent')
     .option('--task-group <id>', 'Filter by task group')
     .option('--status <status>', 'queued|active|idle|paused|completed|failed|archived|all', 'all')
+    .option('--tag <tag>', 'Filter by tag')
+    .option('--search <text>', 'Search in session title')
+    .option('--limit <number>', 'Limit number of results', parseInt)
     .option('--json', 'Output JSON')
-    .action(async (opts: { agent?: string; taskGroup?: string; status: string; json?: boolean }) => {
+    .action(async (opts: { agent?: string; taskGroup?: string; status: string; tag?: string; search?: string; limit?: number; json?: boolean }) => {
       await ensureDaemonRunning();
       const result = await requestDaemon<{ sessions: Array<{
         id: string;
@@ -31,6 +34,9 @@ export function registerSessionCommand(program: Command): void {
         agentRef: opts.agent,
         taskGroupId: opts.taskGroup,
         status: opts.status,
+        tag: opts.tag,
+        search: opts.search,
+        limit: opts.limit,
       });
       if (opts.json) {
         console.log(JSON.stringify(result, null, 2));
@@ -38,7 +44,20 @@ export function registerSessionCommand(program: Command): void {
       }
 
       if (result.sessions.length === 0) {
-        log.info('No sessions found.');
+        const filters = [];
+        if (opts.agent) filters.push(`agent: ${opts.agent}`);
+        if (opts.taskGroup) filters.push(`task-group: ${opts.taskGroup}`);
+        if (opts.status !== 'all') filters.push(`status: ${opts.status}`);
+        if (opts.tag) filters.push(`tag: ${opts.tag}`);
+        if (opts.search) filters.push(`search: "${opts.search}"`);
+
+        if (filters.length > 0) {
+          log.info(`No sessions found matching filters: ${filters.join(', ')}`);
+          console.log(`\n  ${GRAY}Tip: Try removing some filters or use --status all${RESET}`);
+        } else {
+          log.info('No sessions found.');
+          console.log(`\n  ${GRAY}Tip: Start a chat with 'ah chat <agent>' to create a session.${RESET}`);
+        }
         return;
       }
 

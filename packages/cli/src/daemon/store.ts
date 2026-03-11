@@ -542,12 +542,22 @@ export class DaemonStore {
       clauses.push('status = ?');
       params.push(query.status);
     }
+    if (query.tag) {
+      clauses.push(`id IN (SELECT session_id FROM session_tags WHERE tag = ?)`);
+      params.push(query.tag);
+    }
+    if (query.search) {
+      clauses.push('title LIKE ?');
+      params.push(`%${query.search}%`);
+    }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const limitClause = query.limit ? `LIMIT ${Math.max(1, Math.floor(query.limit))}` : '';
     const rows = this.db.prepare(`
       SELECT * FROM sessions
       ${where}
       ORDER BY last_active_at DESC, created_at DESC
+      ${limitClause}
     `).all(...params) as Record<string, unknown>[];
 
     return rows.map((row) => this.mapSession(row));

@@ -461,6 +461,11 @@ export class AgentNetworkDaemonServer {
           if (!agent) throw new Error(`Local agent not found: ${request.params.agentRef}`);
           agentId = agent.id;
         }
+        const limit = typeof request.params?.limit === 'number'
+          ? request.params.limit
+          : typeof request.params?.limit === 'string'
+            ? parseInt(request.params.limit, 10)
+            : undefined;
         return {
           sessions: this.store.listSessions({
             agentId,
@@ -468,6 +473,9 @@ export class AgentNetworkDaemonServer {
             status: typeof request.params?.status === 'string'
               ? request.params.status as 'queued' | 'active' | 'idle' | 'paused' | 'completed' | 'failed' | 'archived' | 'all'
               : 'all',
+            tag: typeof request.params?.tag === 'string' ? request.params.tag : undefined,
+            search: typeof request.params?.search === 'string' ? request.params.search : undefined,
+            limit: limit && Number.isFinite(limit) ? Math.max(1, limit) : undefined,
           }),
         };
       }

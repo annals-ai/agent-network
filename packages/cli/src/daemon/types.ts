@@ -171,6 +171,9 @@ export interface SessionQuery {
   agentId?: string;
   taskGroupId?: string;
   status?: SessionStatus | 'all';
+  tag?: string;
+  search?: string;
+  limit?: number;
 }
 
 export interface SessionHistoryPromptOptions {
