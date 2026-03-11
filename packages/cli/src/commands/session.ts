@@ -62,18 +62,18 @@ export function registerSessionCommand(program: Command): void {
 
       // Define table columns
       const columns: Column[] = [
-        { key: 'id', label: 'Session ID', width: 40 },
+        { key: 'id', label: 'ID', width: 10 },
         { key: 'agentName', label: 'Agent Name', width: 20 },
-        { key: 'status', label: 'Status', width: 12 },
-        { key: 'title', label: 'Title', width: 53 },
+        { key: 'status', label: 'Status', width: 10 },
+        { key: 'title', label: 'Title', width: 80 },
       ];
 
       // Format rows
       const rows = result.sessions.map((s) => ({
-        id: s.id,
-        agentName: s.agentName || s.agentId || '-',
+        id: s.id.slice(0, 8),
+        agentName: s.agentName || s.agentId?.slice(0, 8) || '-',
         status: `${statusColors[s.status] || GRAY}${s.status}${RESET}`,
-        title: truncate(s.title || '', 50),
+        title: truncate(s.title || '', 77),
       }));
 
       console.log(renderTable(columns, rows));
