@@ -92,15 +92,31 @@ export function registerDaemonCommand(program: Command): void {
   daemon
     .command('status')
     .description('Show local daemon status')
-    .action(async () => {
+    .option('--json', 'Output JSON')
+    .action(async (opts: { json?: boolean }) => {
       const status = await getDaemonStatus();
-      console.log('');
-      console.log(`  ${BOLD}AH Daemon${RESET}`);
-      console.log('');
-      console.log(`  ${GRAY}Running${RESET}    ${status.running ? `${GREEN}yes${RESET}` : 'no'}`);
-      console.log(`  ${GRAY}PID${RESET}        ${status.pid ?? '—'}`);
-      console.log(`  ${GRAY}Socket${RESET}     ${status.socketPath}`);
-      console.log(`  ${GRAY}Log${RESET}        ${status.logPath}`);
+
+      const result: {
+        running: boolean;
+        pid: number | null;
+        socketPath: string;
+        logPath: string;
+        runtime?: {
+          startedAt: string;
+          uiBaseUrl: string | null;
+          uiPort: number | null;
+          agents: number;
+          sessions: number;
+          taskGroups: number;
+          providerBindings: number;
+          onlineBindings: number;
+        };
+      } = {
+        running: status.running,
+        pid: status.pid ?? null,
+        socketPath: status.socketPath,
+        logPath: status.logPath,
+      };
 
       if (status.reachable) {
         const runtime = await requestDaemon<{
@@ -113,6 +129,30 @@ export function registerDaemonCommand(program: Command): void {
           uiBaseUrl: string | null;
           uiPort: number | null;
         }>('daemon.status');
+
+        result.runtime = {
+          startedAt: runtime.startedAt,
+          uiBaseUrl: runtime.uiBaseUrl,
+          uiPort: runtime.uiPort,
+          agents: runtime.agents,
+          sessions: runtime.sessions,
+          taskGroups: runtime.taskGroups,
+          providerBindings: runtime.providerBindings,
+          onlineBindings: runtime.onlineBindings,
+        };
+
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
+
+        console.log('');
+        console.log(`  ${BOLD}AH Daemon${RESET}`);
+        console.log('');
+        console.log(`  ${GRAY}Running${RESET}    ${status.running ? `${GREEN}yes${RESET}` : 'no'}`);
+        console.log(`  ${GRAY}PID${RESET}        ${status.pid ?? '—'}`);
+        console.log(`  ${GRAY}Socket${RESET}     ${status.socketPath}`);
+        console.log(`  ${GRAY}Log${RESET}        ${status.logPath}`);
         console.log(`  ${GRAY}Started${RESET}    ${runtime.startedAt}`);
         console.log(`  ${GRAY}Web UI${RESET}     ${runtime.uiBaseUrl ?? '—'}`);
         console.log(`  ${GRAY}UI Port${RESET}    ${runtime.uiPort ?? '—'}`);
@@ -121,9 +161,22 @@ export function registerDaemonCommand(program: Command): void {
         console.log(`  ${GRAY}Tasks${RESET}      ${runtime.taskGroups}`);
         console.log(`  ${GRAY}Bindings${RESET}   ${runtime.providerBindings}`);
         console.log(`  ${GRAY}Online${RESET}     ${runtime.onlineBindings}`);
-      }
+        console.log('');
+      } else {
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+          return;
+        }
 
-      console.log('');
+        console.log('');
+        console.log(`  ${BOLD}AH Daemon${RESET}`);
+        console.log('');
+        console.log(`  ${GRAY}Running${RESET}    ${status.running ? `${GREEN}yes${RESET}` : 'no'}`);
+        console.log(`  ${GRAY}PID${RESET}        ${status.pid ?? '—'}`);
+        console.log(`  ${GRAY}Socket${RESET}     ${status.socketPath}`);
+        console.log(`  ${GRAY}Log${RESET}        ${status.logPath}`);
+        console.log('');
+      }
     });
 
   daemon

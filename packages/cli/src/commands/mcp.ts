@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadConfig, saveConfig, getConfigPath, type BridgeConfig } from '../utils/config.js';
+import { BOLD, GRAY, GREEN, RESET, YELLOW, renderTable, type Column } from '../utils/table.js';
 
 // --- Types ---
 
@@ -153,21 +154,51 @@ async function importMcpServers(force: boolean = false): Promise<void> {
   process.stderr.write(`\nConfig saved to: ${getConfigPath()}\n`);
 }
 
-async function listMcpServers(): Promise<void> {
+async function listMcpServers(opts: { json?: boolean } = {}): Promise<void> {
   const config = loadConfig() as BridgeConfig & McpConfig;
   const mcpServers = config.mcpServers || {};
+
+  if (opts.json) {
+    console.log(JSON.stringify({ mcpServers }, null, 2));
+    return;
+  }
 
   if (Object.keys(mcpServers).length === 0) {
     slogWarn('No MCP servers configured. Run "ah mcp import" to import from VS Code.');
     return;
   }
 
-  slogInfo(`Configured MCP servers (${Object.keys(mcpServers).length}):\n`);
+  // Define table columns
+  const columns: Column[] = [
+    { key: 'name', label: 'Name', width: 20 },
+    { key: 'command', label: 'Command', width: 30 },
+    { key: 'args', label: 'Args', width: 20 },
+    { key: 'status', label: 'Status', width: 10 },
+  ];
 
-  for (const [name, server] of Object.entries(mcpServers)) {
-    const status = server.disabled ? 'disabled' : 'enabled';
-    process.stderr.write(`  • ${name}: ${server.command} ${server.args.join(' ')} [${status}]\n`);
-  }
+  // Format rows
+  const rows = Object.entries(mcpServers).map(([name, server]) => {
+    const statusDisplay = server.disabled
+      ? `${YELLOW}disabled${RESET}`
+      : `${GREEN}enabled${RESET}`;
+    const argsDisplay = server.args.length > 0
+      ? server.args.join(' ').slice(0, 18) + (server.args.join(' ').length > 18 ? '...' : '')
+      : '-';
+    const cmdDisplay = server.command.length > 28
+      ? server.command.slice(0, 25) + '...'
+      : server.command;
+
+    return {
+      name: name.length > 18 ? name.slice(0, 15) + '...' : name,
+      command: cmdDisplay,
+      args: argsDisplay,
+      status: statusDisplay,
+    };
+  });
+
+  console.log('');
+  console.log(renderTable(columns, rows));
+  console.log(`\n${GRAY}Total: ${Object.keys(mcpServers).length} MCP server(s)${RESET}`);
 }
 
 async function removeMcpServer(name: string): Promise<void> {
@@ -296,9 +327,10 @@ export function registerMcpCommand(program: Command): void {
   mcpCmd
     .command('list')
     .description('List configured MCP servers')
-    .action(async () => {
+    .option('--json', 'Output JSON')
+    .action(async (opts: { json?: boolean }) => {
       try {
-        await listMcpServers();
+        await listMcpServers(opts);
       } catch (err) {
         outputError('list_failed', err instanceof Error ? err.message : String(err));
       }
