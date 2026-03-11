@@ -267,10 +267,50 @@ export function registerAgentCommand(program: Command): void {
   agent
     .command('remove <ref>')
     .description('Remove a local agent')
-    .action(async (ref: string) => {
+    .option('-y, --yes', 'Skip confirmation prompt')
+    .action(async (ref: string, opts: { yes?: boolean }) => {
       await ensureDaemonRunning();
+
+      // Get agent info for confirmation message
+      const result = await requestDaemon<{
+        agent: { id: string; slug: string; name: string };
+        bindings: Array<{ provider: string; status: string }>;
+      }>('agent.get', { ref });
+
+      const agent = result.agent;
+      const activeBindings = result.bindings?.filter((b) => b.status !== 'inactive') ?? [];
+
+      // Require confirmation unless --yes is passed
+      if (!opts.yes) {
+        const bindingWarning = activeBindings.length > 0
+          ? `\n  ${YELLOW}Warning:${RESET} This agent has ${activeBindings.length} active provider binding(s).`
+          : '';
+
+        process.stderr.write(`\n  ${BOLD}Remove agent?${RESET}\n`);
+        process.stderr.write(`  ${GRAY}Name:${RESET}  ${agent.name}\n`);
+        process.stderr.write(`  ${GRAY}Slug:${RESET}  ${agent.slug}\n`);
+        process.stderr.write(`  ${GRAY}ID:${RESET}    ${agent.id}${bindingWarning}\n\n`);
+
+        const rl = require('node:readline').createInterface({
+          input: process.stdin,
+          output: process.stderr,
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(`  Are you sure? [y/N] `, (ans: string) => {
+            rl.close();
+            resolve(ans.trim().toLowerCase());
+          });
+        });
+
+        if (answer !== 'y' && answer !== 'yes') {
+          log.info('Aborted.');
+          return;
+        }
+      }
+
       await requestDaemon('agent.remove', { ref });
-      log.success(`Local agent removed: ${ref}`);
+      log.success(`Local agent removed: ${BOLD}${agent.name}${RESET} (${agent.slug})`);
     });
 
   agent
