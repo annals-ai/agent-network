@@ -286,11 +286,15 @@ export function registerPipelineCommand(program: Command): void {
     .option('--output-file <path>', 'Save final result to file')
     .option('--json', 'Output JSON for each step')
     .option('--timeout <seconds>', 'Timeout per step in seconds', '300')
+    .option('-p, --parallel', 'Run all steps in parallel (ignore {prev} dependencies)')
+    .option('-n, --dry-run', 'Preview pipeline without executing')
     .action(async (opts: {
       stages?: string;
       outputFile?: string;
       json?: boolean;
       timeout?: string;
+      parallel?: boolean;
+      dryRun?: boolean;
     }) => {
       let steps: PipelineStep[];
 
@@ -314,7 +318,7 @@ export function registerPipelineCommand(program: Command): void {
             i++; // Skip value
             continue;
           }
-          if (arg === '--json') {
+          if (arg === '--json' || arg === '--parallel' || arg === '-p' || arg === '--dry-run' || arg === '-n') {
             continue;
           }
           if (arg === '--timeout') {
@@ -338,6 +342,12 @@ export function registerPipelineCommand(program: Command): void {
         console.error('  # New --stages syntax:');
         console.error('  ah pipeline run --stages "trend-analyst:分析AI趋势,idea-master:基于{prev}生成创意,writer:写SEO文章"');
         console.error('');
+        console.error('  # Parallel execution (all steps run simultaneously):');
+        console.error('  ah pipeline run --stages "agent1:task1,agent2:task2,agent3:task3" --parallel');
+        console.error('');
+        console.error('  # Dry-run (preview without executing):');
+        console.error('  ah pipeline run --stages "agent1:task1,agent2:task2" --dry-run');
+        console.error('');
         console.error('  # Legacy --then syntax:');
         console.error('  ah pipeline run trend-analyst "/trend AI tools" --then idea-master "/brainstorm {prev}"');
         console.error('');
@@ -345,42 +355,85 @@ export function registerPipelineCommand(program: Command): void {
       }
 
       if (!opts.json) {
-        log.info(`Running pipeline with ${steps.length} step(s)...`);
+        const mode = opts.parallel ? 'parallel' : 'sequential';
+        log.info(`Running pipeline with ${steps.length} step(s) [${mode}]...`);
         steps.forEach((step, i) => {
           console.log(`  ${GRAY}${i + 1}.${RESET} ${BOLD}${step.agent}${RESET}: "${step.task.slice(0, 50)}${step.task.length > 50 ? '...' : ''}"`);
         });
         console.log('');
       }
 
+      // Dry-run mode: just show the plan
+      if (opts.dryRun) {
+        log.success('Dry run complete. No agents were called.');
+        console.log('\n  Use without --dry-run to execute.');
+        return;
+      }
+
       try {
         // Check auth
         const token = loadToken();
         const hasAuth = !!token;
-
-        // Execute pipeline
-        let prevOutput: string | null = null;
         const startTime = Date.now();
 
-        for (let i = 0; i < steps.length; i++) {
-          const step = steps[i];
-          const isLast = i === steps.length - 1;
-          const stepOutputFile = isLast ? opts.outputFile : undefined;
+        let prevOutput: string | null = null;
+        let results: string[] = [];
 
-          const isLocal = resolveLocalAgentRef(step.agent);
-
-          if (isLocal) {
-            prevOutput = await executeLocalStep(step, prevOutput, stepOutputFile, opts.json);
-          } else if (hasAuth) {
-            prevOutput = await executeRemoteStep(step, prevOutput, token!, stepOutputFile, opts.json);
-          } else {
-            log.error(`Agent not found locally and not authenticated: ${step.agent}`);
-            log.error('Run `ah login` to call remote agents');
-            process.exit(1);
+        if (opts.parallel) {
+          // Parallel execution: run all steps simultaneously
+          if (!opts.json) {
+            log.info('Running all steps in parallel...');
           }
 
-          if (!opts.json && !isLast) {
-            log.success(`Step ${i + 1} completed (${prevOutput.length} chars)`);
-            console.log('');
+          // Create execution promises for all steps
+          const executionPromises = steps.map((step, i) => {
+            const isLast = i === steps.length - 1;
+            const stepOutputFile = isLast ? opts.outputFile : undefined;
+            const isLocal = resolveLocalAgentRef(step.agent);
+
+            if (isLocal) {
+              return executeLocalStep(step, null, stepOutputFile, opts.json);
+            } else if (hasAuth) {
+              return executeRemoteStep(step, null, token!, stepOutputFile, opts.json);
+            } else {
+              log.error(`Agent not found locally and not authenticated: ${step.agent}`);
+              log.error('Run `ah login` to call remote agents');
+              process.exit(1);
+            }
+          });
+
+          // Execute all in parallel
+          results = await Promise.all(executionPromises);
+          prevOutput = results[results.length - 1] || '';
+
+          if (!opts.json) {
+            steps.forEach((step, i) => {
+              log.success(`Step ${i + 1} (${step.agent}) completed (${results[i].length} chars)`);
+            });
+          }
+        } else {
+          // Sequential execution (default)
+          for (let i = 0; i < steps.length; i++) {
+            const step = steps[i];
+            const isLast = i === steps.length - 1;
+            const stepOutputFile = isLast ? opts.outputFile : undefined;
+
+            const isLocal = resolveLocalAgentRef(step.agent);
+
+            if (isLocal) {
+              prevOutput = await executeLocalStep(step, prevOutput, stepOutputFile, opts.json);
+            } else if (hasAuth) {
+              prevOutput = await executeRemoteStep(step, prevOutput, token!, stepOutputFile, opts.json);
+            } else {
+              log.error(`Agent not found locally and not authenticated: ${step.agent}`);
+              log.error('Run `ah login` to call remote agents');
+              process.exit(1);
+            }
+
+            if (!opts.json && !isLast) {
+              log.success(`Step ${i + 1} completed (${prevOutput.length} chars)`);
+              console.log('');
+            }
           }
         }
 
@@ -390,11 +443,13 @@ export function registerPipelineCommand(program: Command): void {
           console.log(JSON.stringify({
             status: 'completed',
             steps: steps.length,
+            mode: opts.parallel ? 'parallel' : 'sequential',
             elapsed_seconds: parseFloat(elapsed),
+            results: opts.parallel ? results : [prevOutput],
             result: prevOutput,
           }));
         } else {
-          log.success(`Pipeline completed in ${elapsed}s`);
+          log.success(`Pipeline completed in ${elapsed}s (${opts.parallel ? 'parallel' : 'sequential'})`);
           if (!opts.outputFile && prevOutput) {
             console.log('');
             console.log(prevOutput);

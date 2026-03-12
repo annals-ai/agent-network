@@ -1,13 +1,14 @@
 import type { Command } from 'commander';
-import { existsSync, accessSync, constants } from 'node:fs';
+import { existsSync, accessSync, constants, unlinkSync, mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { getDaemonStatus } from '../daemon/process.js';
+import { getDaemonStatus, startDaemonBackground } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
-import { hasToken, loadToken } from '../platform/auth.js';
-import { loadConfig, getConfigPath, getLogsDir, getPidsDir } from '../utils/config.js';
+import { hasToken, loadToken, saveToken } from '../platform/auth.js';
+import { loadConfig, saveConfig, getConfigPath, getLogsDir, getPidsDir } from '../utils/config.js';
 import { log } from '../utils/logger.js';
 import { BOLD, GRAY, GREEN, RED, YELLOW, RESET, CYAN } from '../utils/table.js';
+import { execSync } from 'node:child_process';
 
 interface CheckResult {
   name: string;
@@ -21,7 +22,7 @@ export function registerDoctorCommand(program: Command): void {
     .command('doctor')
     .description('Diagnose common issues with ah CLI setup')
     .option('--json', 'Output JSON')
-    .option('--fix', 'Show fix suggestions for issues')
+    .option('--fix', 'Automatically fix detected issues')
     .action(async (opts: { json?: boolean; fix?: boolean }) => {
       const results: CheckResult[] = [];
 
@@ -198,26 +199,135 @@ export function registerDoctorCommand(program: Command): void {
         console.log(`  ${GREEN}All systems healthy!${RESET}`);
       }
 
-      // Show fix suggestions if --fix flag is provided
+      // Auto-fix mode: actually fix issues
       if (opts.fix && (errorCount > 0 || warnCount > 0)) {
-        console.log(`\n  ${BOLD}Fix Suggestions:${RESET}`);
+        console.log(`\n  ${BOLD}${YELLOW}Auto-fixing issues...${RESET}\n`);
+
         for (const result of results) {
-          if (result.status !== 'ok') {
-            const icon = result.status === 'error' ? '❌' : '⚠️';
-            console.log(`  ${icon} ${result.name}:`);
-            if (result.name === 'Daemon' && result.status === 'warn') {
-              console.log(`      ${CYAN}ah daemon start${RESET} - Start the local daemon`);
-            }
-            if (result.name === 'Auth' && result.status === 'warn') {
-              console.log(`      ${CYAN}ah login${RESET} - Authenticate with the platform`);
-            }
-            if (result.name === 'Config' && result.status === 'error') {
-              console.log(`      ${CYAN}ah config reset --force${RESET} - Reset corrupted config`);
-            }
-            if (result.name === 'Agents' && result.status === 'warn') {
-              console.log(`      ${CYAN}ah agent add --name <name> --project <path>${RESET} - Add your first agent`);
+          if (result.status === 'ok') continue;
+
+          const icon = result.status === 'error' ? '❌' : '⚠️';
+          let fixed = false;
+
+          // Fix: Config file invalid
+          if (result.name === 'Config' && result.status === 'error' && result.message.includes('invalid JSON')) {
+            try {
+              unlinkSync(getConfigPath());
+              saveConfig({ agents: {} });
+              console.log(`  ${icon} ${result.name}: ${GREEN}Reset config file${RESET}`);
+              fixed = true;
+            } catch {
+              console.log(`  ${icon} ${result.name}: ${RED}Failed to reset config${RESET}`);
             }
           }
+
+          // Fix: No config file (just create default)
+          if (result.name === 'Config' && result.status === 'warn' && result.message.includes('No config file')) {
+            try {
+              saveConfig({ agents: {} });
+              console.log(`  ${icon} ${result.name}: ${GREEN}Created default config${RESET}`);
+              fixed = true;
+            } catch {
+              console.log(`  ${icon} ${result.name}: ${RED}Failed to create config${RESET}`);
+            }
+          }
+
+          // Fix: Logs/PIDs directory not writable - try to create/fix
+          if ((result.name === 'Logs dir' || result.name === 'PIDs dir') && result.status === 'error') {
+            try {
+              const dir = result.name === 'Logs dir' ? getLogsDir() : getPidsDir();
+              if (!existsSync(dir)) {
+                mkdirSync(dir, { recursive: true, mode: 0o755 });
+              } else {
+                // Try to fix permissions
+                execSync(`chmod 755 "${dir}"`, { stdio: 'ignore' });
+              }
+              console.log(`  ${icon} ${result.name}: ${GREEN}Fixed directory permissions${RESET}`);
+              fixed = true;
+            } catch {
+              console.log(`  ${icon} ${result.name}: ${RED}Failed to fix directory${RESET}`);
+            }
+          }
+
+          // Fix: Daemon not running - start it
+          if (result.name === 'Daemon' && result.status === 'warn' && result.message === 'Not running') {
+            try {
+              await startDaemonBackground();
+              // Wait a bit for daemon to start
+              await new Promise(resolve => setTimeout(resolve, 1500));
+              console.log(`  ${icon} ${result.name}: ${GREEN}Started daemon${RESET}`);
+              fixed = true;
+            } catch {
+              console.log(`  ${icon} ${result.name}: ${RED}Failed to start daemon${RESET}`);
+            }
+          }
+
+          // Info messages (cannot auto-fix)
+          if (!fixed && result.name === 'Auth' && result.status === 'warn') {
+            console.log(`  ${icon} ${result.name}: ${YELLOW}Run "ah login" to authenticate${RESET}`);
+          }
+          if (!fixed && result.name === 'Agents' && result.status === 'warn') {
+            console.log(`  ${icon} ${result.name}: ${YELLOW}Run "ah agent add" to add agents${RESET}`);
+          }
+          if (!fixed && result.name === 'Node.js' && result.status === 'warn') {
+            console.log(`  ${icon} ${result.name}: ${YELLOW}Upgrade Node.js to 20+${RESET}`);
+          }
+        }
+
+        console.log('');
+
+        // Re-run checks after fixes
+        console.log(`  ${BOLD}Re-checking after fixes...${RESET}\n`);
+
+        // Re-check daemon status
+        const newDaemonStatus = await getDaemonStatus();
+        const newResults: CheckResult[] = [];
+
+        // Check config again
+        try {
+          loadConfig();
+          newResults.push({ name: 'Config', status: 'ok', message: 'Config file valid' });
+        } catch {
+          newResults.push({ name: 'Config', status: 'error', message: 'Config still invalid' });
+        }
+
+        // Check daemon
+        if (newDaemonStatus.running && newDaemonStatus.reachable) {
+          newResults.push({ name: 'Daemon', status: 'ok', message: `Running (PID ${newDaemonStatus.pid})` });
+        } else if (newDaemonStatus.running) {
+          newResults.push({ name: 'Daemon', status: 'error', message: 'Running but not reachable' });
+        } else {
+          newResults.push({ name: 'Daemon', status: 'warn', message: 'Not running' });
+        }
+
+        // Check directories
+        try {
+          accessSync(getLogsDir(), constants.W_OK);
+          newResults.push({ name: 'Logs dir', status: 'ok', message: 'Writable' });
+        } catch {
+          newResults.push({ name: 'Logs dir', status: 'error', message: 'Not writable' });
+        }
+
+        try {
+          accessSync(getPidsDir(), constants.W_OK);
+          newResults.push({ name: 'PIDs dir', status: 'ok', message: 'Writable' });
+        } catch {
+          newResults.push({ name: 'PIDs dir', status: 'error', message: 'Not writable' });
+        }
+
+        for (const result of newResults) {
+          const icon = result.status === 'ok' ? '✅' : result.status === 'warn' ? '⚠️' : '❌';
+          const statusColor = result.status === 'ok' ? GREEN : result.status === 'warn' ? YELLOW : RED;
+          console.log(`  ${icon}  ${BOLD}${result.name}:${RESET} ${statusColor}${result.message}${RESET}`);
+        }
+
+        const newOk = newResults.filter(r => r.status === 'ok').length;
+        const newError = newResults.filter(r => r.status === 'error').length;
+        console.log('');
+        if (newError > 0) {
+          console.log(`  ${RED}${BOLD}Still have ${newError} issue(s) that could not be auto-fixed.${RESET}`);
+        } else {
+          console.log(`  ${GREEN}${BOLD}All fixable issues resolved!${RESET}`);
         }
         console.log('');
       }
