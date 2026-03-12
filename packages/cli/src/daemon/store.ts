@@ -290,6 +290,28 @@ export class DaemonStore {
     };
   }
 
+  private mapSessionWithAgent(row: Record<string, unknown>): SessionRecord {
+    return {
+      id: String(row.id),
+      agentId: String(row.agent_id),
+      agentName: row.agent_name ? String(row.agent_name) : undefined,
+      agentSlug: row.agent_slug ? String(row.agent_slug) : undefined,
+      taskGroupId: row.task_group_id ? String(row.task_group_id) : null,
+      parentSessionId: row.parent_session_id ? String(row.parent_session_id) : null,
+      origin: String(row.origin),
+      principalType: String(row.principal_type),
+      principalId: row.principal_id ? String(row.principal_id) : null,
+      status: String(row.status) as SessionStatus,
+      claudeResumeId: row.claude_resume_id ? String(row.claude_resume_id) : null,
+      title: row.title ? String(row.title) : null,
+      summary: row.summary ? String(row.summary) : null,
+      createdAt: String(row.created_at),
+      lastActiveAt: String(row.last_active_at),
+      updatedAt: String(row.updated_at),
+      tags: this.listSessionTags(String(row.id)),
+    };
+  }
+
   private mapMessage(row: Record<string, unknown>): SessionMessage {
     return {
       id: String(row.id),
@@ -598,36 +620,38 @@ export class DaemonStore {
     const params: SqlPrimitive[] = [];
 
     if (query.agentId) {
-      clauses.push('agent_id = ?');
+      clauses.push('s.agent_id = ?');
       params.push(query.agentId);
     }
     if (query.taskGroupId) {
-      clauses.push('task_group_id = ?');
+      clauses.push('s.task_group_id = ?');
       params.push(query.taskGroupId);
     }
     if (query.status && query.status !== 'all') {
-      clauses.push('status = ?');
+      clauses.push('s.status = ?');
       params.push(query.status);
     }
     if (query.tag) {
-      clauses.push(`id IN (SELECT session_id FROM session_tags WHERE tag = ?)`);
+      clauses.push(`s.id IN (SELECT session_id FROM session_tags WHERE tag = ?)`);
       params.push(query.tag);
     }
     if (query.search) {
-      clauses.push('title LIKE ?');
+      clauses.push('s.title LIKE ?');
       params.push(`%${query.search}%`);
     }
 
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const limitClause = query.limit ? `LIMIT ${Math.max(1, Math.floor(query.limit))}` : '';
     const rows = this.db.prepare(`
-      SELECT * FROM sessions
+      SELECT s.*, a.name as agent_name, a.slug as agent_slug
+      FROM sessions s
+      LEFT JOIN agents a ON s.agent_id = a.id
       ${where}
-      ORDER BY last_active_at DESC, created_at DESC
+      ORDER BY s.last_active_at DESC, s.created_at DESC
       ${limitClause}
     `).all(...params) as Record<string, unknown>[];
 
-    return rows.map((row) => this.mapSession(row));
+    return rows.map((row) => this.mapSessionWithAgent(row));
   }
 
   getSessionCountsByAgent(): Record<string, number> {

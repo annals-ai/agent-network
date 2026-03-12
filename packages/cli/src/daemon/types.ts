@@ -64,6 +64,8 @@ export interface TaskGroup {
 export interface SessionRecord {
   id: string;
   agentId: string;
+  agentName?: string;
+  agentSlug?: string;
   taskGroupId: string | null;
   parentSessionId: string | null;
   origin: string;
