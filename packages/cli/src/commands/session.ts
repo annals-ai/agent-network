@@ -1,7 +1,9 @@
 import type { Command } from 'commander';
 import { createInterface } from 'node:readline';
+import { readFileSync, statSync, watchFile, unwatchFile } from 'node:fs';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
+import { getDaemonLogPath } from '../daemon/paths.js';
 import { log } from '../utils/logger.js';
 import { BOLD, GRAY, GREEN, RED, RESET, YELLOW, BLUE, renderTable, type Column } from '../utils/table.js';
 import { parseTagFlags, runLocalChat } from './local-runtime.js';
@@ -1734,6 +1736,112 @@ export function registerSessionCommand(program: Command): void {
         log.warn(`${action}d ${success}/${sessionsToPrune.length} sessions, ${errors} error(s)`);
       } else {
         log.success(`${action}d ${success} session(s)`);
+      }
+    });
+
+  // --- Session logs: view daemon logs for a specific session ---
+  session
+    .command('logs <id>')
+    .description('View daemon logs for a specific session')
+    .option('-n, --lines <n>', 'Maximum number of log lines to show', '100')
+    .option('--all', 'Show all matching logs (no limit)')
+    .option('-f, --follow', 'Follow log output (tail -f style)')
+    .action(async (id: string, opts: { lines: string; all?: boolean; follow?: boolean }) => {
+      await ensureDaemonRunning();
+
+      // Verify session exists
+      try {
+        await requestDaemon<{ session: { id: string; title: string | null } }>('session.show', { id });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes('not found')) {
+          log.error(`Session not found: ${BOLD}${id}${RESET}`);
+          console.log(`\n  ${GRAY}Tip: Use 'ah session list' to see available sessions.${RESET}`);
+        } else {
+          log.error(`Failed to get session: ${message}`);
+        }
+        process.exit(1);
+      }
+
+      const logPath = getDaemonLogPath();
+      const maxLines = opts.all ? Infinity : parseInt(opts.lines, 10) || 100;
+
+      try {
+        const logContent = readFileSync(logPath, 'utf-8');
+        const allLines = logContent.split('\n').filter(Boolean);
+
+        // Filter lines that contain the session ID
+        // Session IDs can appear in various formats:
+        // - Full UUID: 09b3747a-8e8f-438c-98ab-0bb86cc9a9e4
+        // - Short ID: 09b3747a
+        const shortId = id.slice(0, 8);
+        const matchingLines = allLines.filter(line =>
+          line.includes(id) || line.includes(shortId)
+        );
+
+        if (matchingLines.length === 0) {
+          log.info(`No logs found for session: ${BOLD}${id}${RESET}`);
+          console.log(`\n  ${GRAY}This session may not have any daemon logs yet.${RESET}`);
+          console.log(`  ${GRAY}Tip: Use 'ah daemon logs' to see all daemon logs.${RESET}\n`);
+          return;
+        }
+
+        // Apply line limit
+        const displayLines = opts.all ? matchingLines : matchingLines.slice(-maxLines);
+
+        console.log(`\n${BOLD}Logs for session ${id.slice(0, 8)}${RESET} (${displayLines.length}/${matchingLines.length} lines)\n`);
+
+        for (const line of displayLines) {
+          console.log(line);
+        }
+
+        console.log('');
+
+        // If --follow flag is set, watch the file for changes
+        if (opts.follow) {
+          let lastSize = 0;
+          try {
+            lastSize = statSync(logPath).size;
+          } catch {
+            lastSize = 0;
+          }
+
+          console.log(`${GRAY}--- following logs (Ctrl+C to stop) ---${RESET}\n`);
+
+          watchFile(logPath, { interval: 500 }, (curr) => {
+            if (curr.size > lastSize) {
+              try {
+                const fd = require('node:fs').openSync(logPath, 'r');
+                const buffer = Buffer.alloc(curr.size - lastSize);
+                require('node:fs').readSync(fd, buffer, 0, buffer.length, lastSize);
+                require('node:fs').closeSync(fd);
+                const newContent = buffer.toString('utf-8');
+                const newLines = newContent.split('\n').filter((l: string) => l.length > 0);
+                for (const newLine of newLines) {
+                  if (newLine.includes(id) || newLine.includes(shortId)) {
+                    console.log(newLine);
+                  }
+                }
+                lastSize = curr.size;
+              } catch {
+                // Ignore read errors
+              }
+            }
+          });
+
+          // Handle graceful shutdown
+          process.on('SIGINT', () => {
+            unwatchFile(logPath);
+            process.exit(0);
+          });
+
+          // Keep process alive
+          process.stdin.resume();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error(`Failed to read logs: ${message}`);
+        process.exit(1);
       }
     });
 }
