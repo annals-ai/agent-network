@@ -1162,6 +1162,229 @@ export function registerSessionCommand(program: Command): void {
       }
     });
 
+  // --- Session batch export: export multiple sessions at once ---
+  session
+    .command('batch-export')
+    .description('Export multiple sessions to files')
+    .option('--status <status>', 'Filter by status (completed, failed, archived, etc.)')
+    .option('--agent <ref>', 'Filter by agent')
+    .option('--tag <tag>', 'Filter by tag')
+    .option('--older-than <duration>', 'Filter sessions older than duration (e.g., 7d, 24h, 1w)')
+    .option('--limit <number>', 'Maximum number of sessions to export', parseInt, '50')
+    .option('-f, --format <format>', 'Output format: json or markdown (default: json)', 'json')
+    .option('-o, --output-dir <dir>', 'Output directory (default: ./sessions-export)')
+    .option('--zip', 'Create a ZIP archive instead of individual files')
+    .option('--dry-run', 'Preview which sessions would be exported without exporting')
+    .option('--no-messages', 'Exclude message history (metadata only)')
+    .action(async (opts: {
+      status?: string;
+      agent?: string;
+      tag?: string;
+      olderThan?: string;
+      limit?: number;
+      format: string;
+      outputDir?: string;
+      zip?: boolean;
+      dryRun?: boolean;
+      messages?: boolean;
+    }) => {
+      await ensureDaemonRunning();
+
+      // Validate format
+      const format = opts.format.toLowerCase();
+      if (format !== 'json' && format !== 'markdown' && format !== 'md') {
+        log.error(`Invalid format: ${opts.format}. Use 'json' or 'markdown'.`);
+        process.exit(1);
+      }
+      const isMarkdown = format === 'markdown' || format === 'md';
+      const includeMessages = opts.messages !== false;
+
+      // Parse --older-than duration
+      let olderThanMs: number | null = null;
+      if (opts.olderThan) {
+        olderThanMs = parseOlderThan(opts.olderThan);
+        if (olderThanMs === null) {
+          log.error(`Invalid --older-than duration: ${opts.olderThan}`);
+          console.log(`  ${GRAY}Examples: 7d, 24h, 1w, 30d, 2w${RESET}`);
+          process.exit(1);
+        }
+      }
+
+      // Build filter options
+      const filterOptions: {
+        agentRef?: string;
+        status: string;
+        tag?: string;
+        limit?: number;
+      } = {
+        status: opts.status || 'all',
+        limit: opts.limit,
+      };
+      if (opts.agent) filterOptions.agentRef = opts.agent;
+      if (opts.tag) filterOptions.tag = opts.tag;
+
+      // Get sessions matching filters
+      const result = await requestDaemon<{
+        sessions: Array<{
+          id: string;
+          title: string | null;
+          status: string;
+          lastActiveAt: string;
+          createdAt: string;
+          agentId: string;
+          agentName?: string;
+        }>;
+      }>('session.list', filterOptions);
+
+      // Apply --older-than filter
+      let sessions = result.sessions;
+      if (olderThanMs !== null) {
+        const cutoff = Date.now() - olderThanMs;
+        sessions = sessions.filter((s) => {
+          const lastActive = new Date(s.lastActiveAt).getTime();
+          return lastActive < cutoff;
+        });
+      }
+
+      if (sessions.length === 0) {
+        log.info('No sessions found matching the specified filters.');
+        return;
+      }
+
+      // Show preview info
+      console.log('');
+      console.log(`  ${BOLD}Batch Export${RESET}  ${sessions.length} session(s) found`);
+      console.log(`  ${GRAY}Format:${RESET}    ${isMarkdown ? 'markdown' : 'json'}`);
+      console.log(`  ${GRAY}Messages:${RESET}  ${includeMessages ? 'included' : 'excluded'}`);
+      if (opts.outputDir) {
+        console.log(`  ${GRAY}Output:${RESET}   ${opts.outputDir}`);
+      }
+      if (opts.zip) {
+        console.log(`  ${GRAY}Archive:${RESET}  ZIP`);
+      }
+      console.log('');
+
+      if (opts.dryRun) {
+        console.log(`${BOLD}Sessions to export:${RESET}\n`);
+        for (const s of sessions) {
+          const title = s.title || '(no title)';
+          console.log(`  ${GRAY}${s.id.slice(0, 8)}...${RESET}  ${title}  ${GRAY}[${s.status}]${RESET}`);
+        }
+        console.log(`\n  ${GRAY}Run without --dry-run to export.${RESET}`);
+        return;
+      }
+
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const { createZipBuffer } = await import('../utils/zip.js');
+
+      const outputDir = opts.outputDir || './sessions-export';
+      const zipEntries: Array<{ path: string; data: Buffer }> = [];
+
+      // Export each session
+      let exported = 0;
+      let errors = 0;
+
+      for (const s of sessions) {
+        try {
+          // Get full session data
+          const sessionResult = await requestDaemon<{
+            session: {
+              id: string;
+              title: string | null;
+              status: string;
+              lastActiveAt: string;
+              agentId: string;
+              agentName?: string;
+              createdAt?: string;
+              tags?: string[];
+            };
+            messages?: Array<{
+              role: string;
+              content: string;
+              createdAt?: string;
+            }>;
+          }>('session.show', { id: s.id });
+
+          const session = sessionResult.session;
+          const messages = includeMessages ? (sessionResult.messages || []) : [];
+
+          let output: string;
+          if (isMarkdown) {
+            output = formatSessionMarkdown(session, messages);
+          } else {
+            output = JSON.stringify({
+              session: {
+                id: session.id,
+                title: session.title,
+                status: session.status,
+                agentId: session.agentId,
+                agentName: session.agentName,
+                createdAt: session.createdAt,
+                lastActiveAt: session.lastActiveAt,
+                tags: session.tags || [],
+              },
+              messages: includeMessages ? messages : undefined,
+              exportedAt: new Date().toISOString(),
+            }, null, 2);
+          }
+
+          // Generate filename
+          const safeTitle = (session.title || 'untitled')
+            .replace(/[^a-zA-Z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .slice(0, 50);
+          const ext = isMarkdown ? 'md' : 'json';
+          const filename = `${s.id.slice(0, 8)}_${safeTitle}.${ext}`;
+
+          if (opts.zip) {
+            zipEntries.push({
+              path: filename,
+              data: Buffer.from(output, 'utf-8'),
+            });
+          } else {
+            // Write individual file
+            const filePath = path.join(outputDir, filename);
+            const dir = path.dirname(filePath);
+            if (!fs.existsSync(dir)) {
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            fs.writeFileSync(filePath, output, 'utf-8');
+          }
+
+          exported++;
+          process.stderr.write(`.`);
+        } catch (err) {
+          errors++;
+          process.stderr.write(`x`);
+        }
+      }
+
+      console.log('');
+      console.log('');
+
+      // Handle ZIP output
+      if (opts.zip) {
+        try {
+          const zipBuffer = createZipBuffer(zipEntries);
+          const zipPath = path.join(outputDir, 'sessions-export.zip');
+          if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+          }
+          fs.writeFileSync(zipPath, zipBuffer);
+          log.success(`Exported ${exported} session(s) to: ${BOLD}${zipPath}${RESET}`);
+        } catch (err) {
+          log.error(`Failed to create ZIP: ${(err as Error).message}`);
+        }
+      } else {
+        log.success(`Exported ${exported} session(s) to: ${BOLD}${outputDir}${RESET}`);
+      }
+
+      if (errors > 0) {
+        console.log(`  ${RED}Errors: ${errors}${RESET}`);
+      }
+    });
+
   // --- Session run: parallel session execution ---
   session
     .command('run')
