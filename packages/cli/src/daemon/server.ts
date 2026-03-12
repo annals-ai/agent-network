@@ -625,6 +625,14 @@ export class AgentNetworkDaemonServer {
         };
       }
 
+      case 'session.messages': {
+        const id = expectString(request.params?.id, 'id');
+        const session = this.store.getSession(id);
+        if (!session) throw new Error(`Session not found: ${id}`);
+        const messages = this.store.getSessionMessages(id);
+        return { messages };
+      }
+
       case 'session.fork': {
         const id = expectString(request.params?.id, 'id');
         const session = this.store.forkSession({

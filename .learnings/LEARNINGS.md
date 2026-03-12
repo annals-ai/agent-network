@@ -12,3 +12,9 @@
    - Daemon 未运行：自动启动 daemon
 
 3. **模块导入注意**：daemon/process.ts 导出的是 `startDaemonBackground` 而不是 `startDaemon`，需要使用正确的函数名
+
+4. **批量会话导出 session batch-export**：
+   - 使用 `parseOlderThan()` 解析时间过滤参数（如 7d, 24h）
+   - 使用 `session.list` 获取会话列表，然后逐个调用 `session.show` 获取详情
+   - ZIP 打包使用现有的 `createZipBuffer()` 工具函数
+   - 文件命名使用 safeTitle 清理特殊字符避免文件系统问题

@@ -364,6 +364,82 @@ export function registerSessionCommand(program: Command): void {
     });
 
   session
+    .command('log <id>')
+    .description('Show message log for a session')
+    .option('--json', 'Output as JSON')
+    .option('--role <role>', 'Filter by role: user, assistant, tool, system')
+    .option('--limit <number>', 'Limit number of messages', '50')
+    .option('--reverse', 'Show oldest first (default: newest first)')
+    .action(async (id: string, opts: { json?: boolean; role?: string; limit?: string; reverse?: boolean }) => {
+      await ensureDaemonRunning();
+
+      const result = await requestDaemon<{ messages: Array<{
+        id: string;
+        seq: number;
+        role: string;
+        kind: string;
+        content: string;
+        createdAt: string;
+      }> }>('session.messages', { id });
+
+      let messages = result.messages;
+
+      // Filter by role
+      if (opts.role) {
+        messages = messages.filter(m => m.role === opts.role);
+      }
+
+      // Limit
+      const limit = parseInt(opts.limit || '50', 10);
+      if (!isNaN(limit) && limit > 0) {
+        messages = messages.slice(-limit);
+      }
+
+      // Reverse if requested
+      if (opts.reverse) {
+        messages = messages.reverse();
+      }
+
+      if (opts.json) {
+        console.log(JSON.stringify(messages, null, 2));
+        return;
+      }
+
+      // Human-readable output
+      if (messages.length === 0) {
+        console.log(`${GRAY}No messages found for session ${id}${RESET}`);
+        return;
+      }
+
+      console.log(`\n${BOLD}Session Log: ${id}${RESET}\n`);
+
+      for (const msg of messages) {
+        const timestamp = new Date(msg.createdAt).toLocaleTimeString();
+        const roleColor = msg.role === 'user' ? GREEN : msg.role === 'assistant' ? BLUE : msg.role === 'tool' ? YELLOW : GRAY;
+        const roleLabel = msg.role.toUpperCase().padEnd(8);
+        const seqLabel = `#${msg.seq}`.padEnd(6);
+
+        console.log(`${GRAY}${timestamp}${RESET} ${GRAY}${seqLabel}${RESET} ${roleColor}${roleLabel}${RESET}`);
+
+        // Show content (truncate if too long)
+        const content = msg.content;
+        const maxContentLen = 500;
+        const displayContent = content.length > maxContentLen
+          ? content.slice(0, maxContentLen) + `${GRAY}...${RESET}`
+          : content;
+
+        // Indent content
+        const lines = displayContent.split('\n');
+        for (const line of lines) {
+          console.log(`  ${line}`);
+        }
+        console.log('');
+      }
+
+      console.log(`${GRAY}Total: ${messages.length} message(s)${RESET}\n`);
+    });
+
+  session
     .command('fork <id>')
     .description('Fork a session into a new local branch session')
     .option('--task-group <id>', 'Bind the new session to a task group')

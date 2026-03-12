@@ -651,6 +651,70 @@ export class DaemonStore {
     return Object.fromEntries(rows.map((row) => [row.task_group_id, Number(row.count)]));
   }
 
+  /**
+   * Get agent statistics including session counts by status.
+   * Returns an array with stats for each agent.
+   */
+  getAgentStats(): Array<{
+    agentId: string;
+    agentName: string;
+    agentSlug: string;
+    totalSessions: number;
+    sessionsByStatus: Record<string, number>;
+    firstSessionAt: string | null;
+    lastSessionAt: string | null;
+  }> {
+    const agents = this.listAgents();
+    const stats: Array<{
+      agentId: string;
+      agentName: string;
+      agentSlug: string;
+      totalSessions: number;
+      sessionsByStatus: Record<string, number>;
+      firstSessionAt: string | null;
+      lastSessionAt: string | null;
+    }> = [];
+
+    for (const agent of agents) {
+      // Get total count
+      const countRows = this.db.prepare(`
+        SELECT COUNT(*) as total FROM sessions WHERE agent_id = ?
+      `).get(agent.id) as { total: number };
+
+      // Get counts by status
+      const statusRows = this.db.prepare(`
+        SELECT status, COUNT(*) as count
+        FROM sessions
+        WHERE agent_id = ?
+        GROUP BY status
+      `).all(agent.id) as Array<{ status: string; count: number }>;
+
+      // Get first and last session times
+      const timeRows = this.db.prepare(`
+        SELECT MIN(created_at) as first_at, MAX(created_at) as last_at
+        FROM sessions
+        WHERE agent_id = ?
+      `).get(agent.id) as { first_at: string | null; last_at: string | null };
+
+      const sessionsByStatus: Record<string, number> = {};
+      for (const row of statusRows) {
+        sessionsByStatus[row.status] = Number(row.count);
+      }
+
+      stats.push({
+        agentId: agent.id,
+        agentName: agent.name,
+        agentSlug: agent.slug,
+        totalSessions: Number(countRows.total),
+        sessionsByStatus,
+        firstSessionAt: timeRows.first_at,
+        lastSessionAt: timeRows.last_at,
+      });
+    }
+
+    return stats;
+  }
+
   updateSession(sessionId: string, input: UpdateSessionInput): SessionRecord {
     const current = this.getSession(sessionId);
     if (!current) throw new Error(`Session not found: ${sessionId}`);
