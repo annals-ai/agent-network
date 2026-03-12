@@ -96,10 +96,14 @@ export async function startDaemonBackgroundWithInfo(): Promise<DaemonStartResult
   removeDaemonSocket();
 
   const logFd = openSync(getDaemonLogPath(), 'a', 0o600);
+  // Strip CLAUDECODE so the daemon (and its child claude processes)
+  // don't inherit the nested-session detection flag.
+  const daemonEnv = { ...process.env };
+  delete daemonEnv.CLAUDECODE;
   const child = spawn(process.execPath, [process.argv[1], 'daemon', 'serve'], {
     detached: true,
     stdio: ['ignore', logFd, logFd],
-    env: process.env,
+    env: daemonEnv,
   });
   child.unref();
   closeSync(logFd);
@@ -225,11 +229,13 @@ function sleep(ms) {
 });
 `;
 
+  const supervisorEnv = { ...process.env };
+  delete supervisorEnv.CLAUDECODE;
   const supervisor = spawn(process.execPath, ['-e', supervisorCode], {
     detached: true,
     stdio: 'ignore',
     env: {
-      ...process.env,
+      ...supervisorEnv,
       AGENT_MESH_ENTRY_PATH: entryPath,
       AGENT_MESH_LOG_PATH: logPath,
       AGENT_MESH_PID_PATH: getDaemonPidPath(),

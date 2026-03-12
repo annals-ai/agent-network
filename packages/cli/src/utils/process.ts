@@ -68,9 +68,16 @@ export async function spawnAgent(
     finalArgs = args;
   }
 
+  // Strip CLAUDECODE env var so spawned Claude processes don't detect
+  // a nested session. The daemon may have inherited CLAUDECODE=1 if it
+  // was started from within a Claude Code session.
+  const spawnEnv = { ...process.env, ...((spawnOptions as SpawnOptions).env ?? {}) };
+  delete spawnEnv.CLAUDECODE;
+
   const child = spawn(finalCommand, finalArgs, {
     stdio: ['pipe', 'pipe', 'pipe'],
     ...spawnOptions,
+    env: spawnEnv,
   });
 
   return {
