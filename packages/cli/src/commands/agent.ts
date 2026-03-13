@@ -1,12 +1,11 @@
 import type { Command } from 'commander';
+import { createInterface } from 'node:readline';
 import { cwd } from 'node:process';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { listProviders } from '../providers/index.js';
 import { log } from '../utils/logger.js';
 import { BOLD, GRAY, GREEN, YELLOW, RED, RESET, renderTable, type Column } from '../utils/table.js';
-import { getDaemonLogPath } from '../daemon/paths.js';
-import { readFileSync } from 'node:fs';
 
 function parseCapabilities(raw: string | undefined): string[] | undefined {
   if (!raw) return undefined;
@@ -346,7 +345,7 @@ export function registerAgentCommand(program: Command): void {
         process.stderr.write(`  ${GRAY}Slug:${RESET}  ${agent.slug}\n`);
         process.stderr.write(`  ${GRAY}ID:${RESET}    ${agent.id}${bindingWarning}\n\n`);
 
-        const rl = require('node:readline').createInterface({
+        const rl = createInterface({
           input: process.stdin,
           output: process.stderr,
         });

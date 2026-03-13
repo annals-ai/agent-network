@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { createInterface } from 'node:readline';
-import { readFileSync, statSync, watchFile, unwatchFile } from 'node:fs';
+import { closeSync, openSync, readFileSync, readSync, statSync, watchFile, unwatchFile } from 'node:fs';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { getDaemonLogPath } from '../daemon/paths.js';
@@ -603,7 +603,7 @@ export function registerSessionCommand(program: Command): void {
           }
           console.log();
 
-          const rl = require('node:readline').createInterface({
+          const rl = createInterface({
             input: process.stdin,
             output: process.stderr,
           });
@@ -664,7 +664,7 @@ export function registerSessionCommand(program: Command): void {
         }
         process.stderr.write(`  ${GRAY}Status:${RESET}  ${session.status}\n\n`);
 
-        const rl = require('node:readline').createInterface({
+        const rl = createInterface({
           input: process.stdin,
           output: process.stderr,
         });
@@ -745,7 +745,7 @@ export function registerSessionCommand(program: Command): void {
           }
           console.log();
 
-          const rl = require('node:readline').createInterface({
+          const rl = createInterface({
             input: process.stdin,
             output: process.stderr,
           });
@@ -807,7 +807,7 @@ export function registerSessionCommand(program: Command): void {
         }
         process.stderr.write(`  ${GRAY}Status:${RESET}  ${session.status}\n\n`);
 
-        const rl = require('node:readline').createInterface({
+        const rl = createInterface({
           input: process.stdin,
           output: process.stderr,
         });
@@ -1822,7 +1822,7 @@ export function registerSessionCommand(program: Command): void {
         }
         console.log();
 
-        const rl = require('node:readline').createInterface({
+        const rl = createInterface({
           input: process.stdin,
           output: process.stderr,
         });
@@ -1936,10 +1936,10 @@ export function registerSessionCommand(program: Command): void {
           watchFile(logPath, { interval: 500 }, (curr) => {
             if (curr.size > lastSize) {
               try {
-                const fd = require('node:fs').openSync(logPath, 'r');
+                const fd = openSync(logPath, 'r');
                 const buffer = Buffer.alloc(curr.size - lastSize);
-                require('node:fs').readSync(fd, buffer, 0, buffer.length, lastSize);
-                require('node:fs').closeSync(fd);
+                readSync(fd, buffer, 0, buffer.length, lastSize);
+                closeSync(fd);
                 const newContent = buffer.toString('utf-8');
                 const newLines = newContent.split('\n').filter((l: string) => l.length > 0);
                 for (const newLine of newLines) {

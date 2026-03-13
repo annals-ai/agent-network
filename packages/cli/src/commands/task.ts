@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import { createInterface } from 'node:readline';
 import { ensureDaemonRunning } from '../daemon/process.js';
 import { requestDaemon } from '../daemon/client.js';
 import { log } from '../utils/logger.js';
@@ -242,7 +243,7 @@ export function registerTaskCommand(program: Command): void {
         process.stderr.write(`  ${GRAY}ID:${RESET}        ${tg.id}\n`);
         process.stderr.write(`  ${GRAY}Sessions:${RESET}  ${tg.sessionCount ?? 0}\n\n`);
 
-        const rl = require('node:readline').createInterface({
+        const rl = createInterface({
           input: process.stdin,
           output: process.stderr,
         });

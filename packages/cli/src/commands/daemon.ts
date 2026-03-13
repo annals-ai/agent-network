@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { readFileSync, watchFile, unwatchFile, statSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, readSync, statSync, unwatchFile, watchFile } from 'node:fs';
 import { AgentNetworkDaemonServer } from '../daemon/server.js';
 import { DaemonStore } from '../daemon/store.js';
 import { getDaemonLogPath } from '../daemon/paths.js';
@@ -221,10 +221,10 @@ export function registerDaemonCommand(program: Command): void {
           if (curr.size > lastSize) {
             // Read new content
             try {
-              const fd = require('node:fs').openSync(logPath, 'r');
+              const fd = openSync(logPath, 'r');
               const buffer = Buffer.alloc(curr.size - lastSize);
-              require('node:fs').readSync(fd, buffer, 0, buffer.length, lastSize);
-              require('node:fs').closeSync(fd);
+              readSync(fd, buffer, 0, buffer.length, lastSize);
+              closeSync(fd);
               const newContent = buffer.toString('utf-8');
               const newLines = newContent.split('\n').filter((l: string) => l.length > 0);
               for (const newLine of newLines) {

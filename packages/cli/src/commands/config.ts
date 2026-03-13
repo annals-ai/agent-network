@@ -1,7 +1,7 @@
 import { Command } from 'commander';
+import { createInterface } from 'node:readline';
 import { loadConfig, saveConfig, getConfigPath, getLogsDir, getPidsDir, resolveRuntimeConfig, DEFAULT_RUNTIME_CONFIG } from '../utils/config.js';
 import { existsSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { log } from '../utils/logger.js';
 import { requestDaemon } from '../daemon/client.js';
@@ -177,7 +177,7 @@ export function registerConfigCommand(program: Command): void {
         console.log(`  ${configPath}\n`);
         console.log(`${YELLOW}This will NOT affect your running agents or sessions.${RESET}\n`);
 
-        const readline = require('node:readline').createInterface({
+        const readline = createInterface({
           input: process.stdin,
           output: process.stdout,
         });
