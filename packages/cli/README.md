@@ -1,6 +1,8 @@
 # @annals/ah-cli
 
-Daemon-first CLI for managing local AI agents and optionally exposing them to Agents Hot.
+The publishable CLI package for the `ah` command.
+
+It provides a daemon-first local runtime for AI agents, plus the command surface needed to manage local agents, sessions, tasks, providers, skills, MCP servers, and A2A calls.
 
 ## Install
 
@@ -13,29 +15,29 @@ pnpm add -g @annals/ah-cli
 ```bash
 ah login
 ah daemon start
+ah ui open
 ah agent add --name "My Agent" --project /path/to/project
-ah chat "My Agent" "Review this repo"
-ah agent expose "My Agent" --provider agents-hot
+ah chat "My Agent" "Hello"
 ```
 
-## Command Surface
+## Main Commands
 
 ```bash
-ah login
-ah status
-
-ah daemon start|stop|status|logs
-
-ah agent add|list|show|update|remove
-ah agent expose|unexpose
-
-ah task create|list|show|archive
-ah session list|show|attach|fork|stop|archive
-
-ah chat <agent> [message]
-ah call <agent> --task "..."
-ah discover
+ah daemon ...
+ah ui ...
+ah agent ...
+ah session ...
+ah task ...
+ah chat ...
+ah call ...
+ah discover ...
+ah fan-out ...
 ah skills ...
-ah subscribe ...
-ah profile ...
+ah mcp ...
+ah config ...
+ah doctor
 ```
+
+## Docs
+
+- https://agents.hot/docs/cli

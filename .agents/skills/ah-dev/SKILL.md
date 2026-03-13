@@ -1,122 +1,147 @@
 ---
 name: ah-dev
 description: |
-  ah-cli (Bridge Worker / CLI / Protocol) code development guide.
-  Use when modifying code, adapters, Worker, protocol, provider ingress,
-  daemon runtime, or platform integration in the ah-cli sub-repo.
-version: 0.0.6
+  Development guide for the ah-cli sub-repo. Use when modifying the CLI,
+  daemon runtime, local Web UI, worker bridge, provider ingress, runtime
+  profiles, or protocol packages inside ah-cli.
+version: 0.1.0
 ---
 
-# ah-cli Dev — Code Development Guide
+# ah-cli Development Guide
 
-## How ah-cli Works Now
+## Read This First
 
-ah-cli 已经不是 “`connect` 把单个 agent 连上平台” 的模型了，而是：
+Start with:
 
-1. **CLI / Daemon** (`packages/cli/`)
-   - 一台机器一个 daemon
-   - 管理多个 agent、多个 session、多个 task group
-   - 本地 `chat/call` 先命中 daemon
-   - daemon 同时启动本地 Web UI backend
-   - transcript 真源和历史查看面都在本地 daemon / Web UI
-2. **Local Web UI** (`packages/ui/`)
-   - 提供 transcript、task、provider exposure、日志查看与基础管理动作
-   - 只绑定本机，不是公开入口
-   - 未来可被 Electron/Tauri 包装，但 v1 先走本地 Web UI
-3. **Providers**
-   - `agents-hot`: 通过 Bridge Worker 把本地 agent 暴露到平台
-   - `generic-a2a`: 在本地 daemon 上起标准 A2A HTTP ingress
-4. **Bridge Worker** (`packages/worker/`)
-   - 继续负责 Agents Hot 线上 ingress 和转发
-5. **Protocol** (`packages/protocol/`)
-   - Bridge / relay / A2A 相关消息类型
+1. `ah-cli/CLAUDE.md`
+2. the relevant package directory
+3. the small reference files in this skill
 
-核心心智：
+Do not design against old `connect` or `connect-ticket` assumptions.
 
-`daemon 拥有本地 session 与 transcript 主权 -> 本地 Web UI 负责查看与管理 -> provider 负责暴露入口 -> 平台只做入口、权限和发现`
-
-## Behavior
-
-当此 skill 触发时：
-
-1. 先读 `ah-cli/CLAUDE.md`
-2. 判断改动属于哪一层：
-   - daemon / local runtime
-   - provider / ingress
-   - worker / bridge
-   - protocol
-3. 不要再按旧的 `connect-ticket/connect` 架构去设计新能力
-
-## Sub-repo Location
+## Repo Shape
 
 ```text
-agents-hot/
-└── ah-cli/
-    ├── packages/
-    │   ├── cli/
-    │   ├── ui/
-    │   ├── protocol/
-    │   └── worker/
-    ├── tests/
-    └── CLAUDE.md
+ah-cli/
+├── packages/
+│   ├── cli/
+│   ├── ui/
+│   ├── protocol/
+│   └── worker/
+├── tests/
+├── README.md
+└── CLAUDE.md
 ```
 
-## Development
+## Current Product Truths
 
-```bash
-cd ah-cli
-pnpm install
-pnpm build
-pnpm test
-pnpm lint
-```
+1. `packages/cli/` is the local daemon runtime and command surface.
+2. `packages/ui/` is the local Web UI, not a public hosted control plane.
+3. `packages/worker/` is the Bridge Worker for provider traffic.
+4. `packages/protocol/` owns the bridge message contracts.
+5. Providers connect the daemon to the outside world:
+   - `agents-hot`
+   - `generic-a2a`
 
-## Deployment
+## Routing by Change Type
+
+### Daemon or local runtime
+
+Look in:
+
+- `packages/cli/src/daemon/`
+- `packages/cli/src/providers/`
+- `packages/cli/src/commands/`
+- `packages/cli/src/adapters/`
+
+### Local Web UI
+
+Look in:
+
+- `packages/ui/`
+- `packages/cli/src/ui/`
 
 ### Bridge Worker
 
+Look in:
+
+- `packages/worker/src/`
+- `packages/protocol/src/`
+
+### Runtime profiles
+
+Look in:
+
+- `packages/cli/src/adapters/profiles.ts`
+- `packages/cli/src/daemon/runtime.ts`
+- `packages/protocol/src/messages.ts`
+
+If you widen runtime support, audit the protocol too. Some bridge-level types still assume older runtime shapes.
+
+### External A2A behavior
+
+If the change affects actual A2A 1.0 semantics, also inspect the main repo:
+
+- `/Users/kcsx/Project/kcsx/agents-hot/src/lib/a2a/`
+- `/Users/kcsx/Project/kcsx/agents-hot/src/app/api/a2a/`
+
+`ah-cli` is only one part of the end-to-end A2A system.
+
+## Development Workflow
+
 ```bash
-cd ah-cli
-npx wrangler deploy --config packages/worker/wrangler.toml
+cd /Users/kcsx/Project/kcsx/agents-hot/ah-cli
+pnpm install
+pnpm build
+pnpm exec vitest run
 ```
 
-### CLI Publishing
+Useful targeted commands:
 
 ```bash
-cd ah-cli/packages/cli
-pnpm version patch --no-git-tag-version
-cd ../..
-
-VERSION=$(node -p "require('./packages/cli/package.json').version")
-git add packages/cli/package.json
-git commit -m "release: v${VERSION}"
-git tag "v${VERSION}"
-git push origin main
-git push origin "v${VERSION}"
+pnpm -C /Users/kcsx/Project/kcsx/agents-hot/ah-cli build
+pnpm -C /Users/kcsx/Project/kcsx/agents-hot/ah-cli exec vitest run
+pnpm -C /Users/kcsx/Project/kcsx/agents-hot/ah-cli lint
 ```
 
-## Main Project Integration Points
+Treat lint debt carefully. Distinguish pre-existing failures from regressions introduced by your change.
 
-| Main project file | Purpose |
-|-------------------|---------|
-| `src/lib/mesh-client.ts` | Platform -> bridge relay client |
-| `src/lib/agent-session-service.ts` | 平台侧 `session_id` / `user_sessions` 索引逻辑 |
-| `src/app/api/agents/[id]/chat/route.ts` | Chat 入口 |
-| `src/app/api/agents/[id]/call/route.ts` | Call 入口 |
-| `src/app/api/developer/agents/[id]/sessions/sync/route.ts` | owner 本地 session 同步 |
+## Integration Checks
 
-## Verification Order
+If you touched CLI behavior, verify with real commands:
 
-1. `cd ah-cli && pnpm test`
-2. `cd ah-cli && pnpm build`
-3. `cd .. && pnpm test`
-4. `cd .. && pnpm run lint`
-5. 改本地 Web UI / daemon 文案边界时，确认口径一致：完整 transcript 留在本地，Agents Hot 不是 transcript surface
-6. 改 provider / ingress 时，补本地 smoke 或 Mac Mini 实机验证
+```bash
+node packages/cli/dist/index.js help --json
+ah daemon start
+ah agent list
+ah chat <local-agent> "hello"
+```
 
-## Further Reading
+If you touched provider or bridge behavior, also verify:
 
-- `ah-cli/CLAUDE.md`
+1. local daemon path
+2. provider exposure path
+3. network path or remote smoke test
+
+## Deployment Notes
+
+### CLI package
+
+- npm package name: `@annals/ah-cli`
+- executable: `ah`
+
+### Mac Mini runtime
+
+Remote runtime path currently lives under:
+
+```text
+/Users/yan/agents-hot/ah-cli
+```
+
+If the user asks to update the remote runtime, use the `macmini` skill from the main repo context.
+
+## References
+
 - `references/architecture.md`
 - `references/protocol-reference.md`
-- `.agents/skills/ah-creator/references/cli-reference.md`
+- `../ah-creator/references/cli-reference.md`

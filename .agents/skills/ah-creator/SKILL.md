@@ -1,219 +1,264 @@
 ---
 name: ah-creator
 description: |
-  Interactive workflow for creating, configuring, exposing, and managing
-  AI agents on Agents.Hot using the daemon-first ah CLI.
-  Also covers CLI command reference, flags, skill publishing, and troubleshooting.
-  Trigger words: create agent, manage agent, publish agent,
-  agent description, agent setup, list agents, delete agent, expose agent,
-  ah command, CLI help, ah flags, daemon, session,
-  ah-cli troubleshooting, publish skill, skill init,
-  skill pack, skill version, skills list, unpublish skill,
-  install skill, update skill, remove skill, installed skills.
-version: 0.0.6
+  Create, manage, debug, and expose local agents with ah-cli.
+  Use when someone needs to set up a new agent, inspect daemon-owned agents,
+  expose an agent through Agents Hot or generic-a2a, package or install skills,
+  attach MCP servers, or troubleshoot local runtime setup.
+version: 0.1.0
 ---
 
-# ah-cli — Create, Manage & Expose Agents
+# ah-cli - Create, Manage, and Expose Agents
 
-## How ah-cli Works
+## Product Model
 
-ah-cli 现在是 **daemon-first 本地运行时**：
+`ah-cli` is a daemon-first local runtime:
 
-1. 一台机器只跑一个 daemon。
-2. daemon 统一管理多个本地 agent、多个 session、多个 task group。
-3. 本地 `chat` / `call` 先命中 daemon。
-4. 需要上线时，再通过 provider 暴露：
+1. One machine runs one daemon.
+2. The daemon owns many local agents, sessions, task groups, and provider bindings.
+3. Local `ah chat` / `ah call` hit the daemon first.
+4. Exposure is optional and happens later through providers:
    - `agents-hot`
    - `generic-a2a`
 
-正确心智不是“先 create 再 connect”，而是：
+The main path is:
 
-`daemon start -> agent add -> 本地 chat/call -> agent expose`
+`install/login -> daemon start -> agent add/quick -> local smoke test -> expose -> remote discover/call`
+
+Do not fall back to old `connect`, `connect-ticket`, `agent-network`, or "web-first registration" guidance.
 
 ## Behavior
 
-这是一个交互式工作流，不是纯参考文档。
+When this skill triggers:
 
-当此 skill 触发时：
+1. First decide whether the user wants to create, inspect, update, expose, remove, or debug an agent.
+2. Prefer executing commands and checking output instead of only explaining theory.
+3. Always get the local path working before exposing an agent to the network.
+4. Use `--json` when verification or follow-up automation depends on structured output.
+5. If runtime support is unclear, check the code before promising it.
 
-1. 先判断用户是要“新建 agent / 管理本地 agent / 对外暴露 / 删除 / 调试”中的哪一种。
-2. 一次只推进一个步骤。
-3. 优先直接执行命令并核对输出，不要只讲理论。
-4. 如果命令失败，先诊断失败原因，再给重试路径。
-5. 不再把 `connect-ticket`、`connect --setup`、`agents publish` 当主流程。
+## Environment Check
 
-## Prerequisites
-
-在开始任何工作流前，先验证环境：
+Start with:
 
 ```bash
 ah --version
 ah status
+ah doctor
 ```
 
-如果 CLI 缺失：
+If the CLI is missing:
 
 ```bash
 pnpm add -g @annals/ah-cli
 ah --version
 ```
 
-如果未登录：
+If the daemon is not running:
 
 ```bash
-ah login
+ah daemon start
+ah ui open
 ```
+
+## Runtime Reality
+
+Today the built-in runtime profiles live in `packages/cli/src/adapters/profiles.ts`.
+
+Current real profiles:
+
+- `claude`
+- `codex`
+
+`ah agent add` accepts `--runtime-type`, but anything beyond the built-in profiles should be treated as code work, not as a supported user path.
+
+Workspace guidance:
+
+- Claude-oriented projects should keep local instructions in `CLAUDE.md`.
+- Codex-oriented projects should keep local instructions in `AGENTS.md`.
+- Reusable local skills should live in `.agents/skills/`.
+- `ah skills install` also mirrors installed skills into `.claude/skills/` when needed.
 
 ## Workflow Routing
 
-| Intent | Workflow |
-|--------|----------|
-| New agent from scratch | Create -> Set up Folder -> Local Test -> Expose |
-| Add skills to existing agent | Set up Folder |
-| Manage local agents | List / Show / Update / Remove |
-| Resume or fork work | Session / Task |
-| Make an agent available online | Expose |
-| Test end-to-end | Local Test -> Remote Test |
-| Remove agent | Delete |
-| Publish a skill to the platform | See `references/skill-publishing.md` |
+| Intent | Primary commands |
+| --- | --- |
+| Create a new agent | `ah agent add`, `ah agent quick` |
+| Inspect local runtime state | `ah agent list`, `ah agent show`, `ah status`, `ah ui open` |
+| Update metadata or runtime config | `ah agent update`, `ah config show`, `ah config runtime` |
+| Test locally | `ah chat`, `ah call`, `ah session list`, `ah task list` |
+| Expose online | `ah agent expose --provider agents-hot` |
+| Expose as standard A2A | `ah agent expose --provider generic-a2a` |
+| Duplicate an agent | `ah agent clone` |
+| Remove or disable exposure | `ah agent unexpose`, `ah agent remove` |
+| Package or publish skills | `ah skills ...` |
+| Attach tool servers | `ah mcp add`, `ah mcp import`, `ah mcp list` |
 
-## Supported Runtime
+## Create a Local Agent
 
-| Type | Runtime | Status |
-|------|---------|--------|
-| `claude` | Claude Code CLI | Available |
+### Quick path
 
-只有 `claude` 仍然是当前支持的 agent runtime。
+If the current directory already is the agent workspace:
 
-## Create
+```bash
+ah daemon start
+ah agent quick "My Agent" --runtime-type claude --description "What it does"
+```
 
-按顺序收集三个输入：
-
-1. Agent name
-2. Project path
-3. Description / capabilities / visibility
-
-### Execute
+### Explicit path
 
 ```bash
 ah daemon start
 ah agent add \
-  --name "<name>" \
-  --slug "<slug>" \
-  --project "<project-path>" \
+  --name "My Agent" \
+  --slug my-agent \
+  --project /absolute/path/to/project \
   --runtime-type claude \
-  --description "<description>" \
+  --description "What it does" \
   --visibility private \
-  --capabilities capability-a,capability-b
+  --capabilities code-review,typescript
 ```
 
-创建完成后，立即进入 Set up Folder。
+Useful optional flags:
 
-## Set up Folder
+- `--sandbox`
+- `--persona`
+- `--visibility public|private|unlisted`
 
-当前 agent 的工作目录就是 `--project`。
+Immediately verify:
 
-如果 agent 使用 Claude 运行时，目录内至少要有：
+```bash
+ah agent show my-agent --json
+```
+
+## Prepare the Workspace
+
+Before testing the agent, make sure the project directory contains the instructions and assets the runtime actually needs.
+
+Typical setup:
 
 ```text
-<project>/
-├── CLAUDE.md
-└── .claude/
-    └── skills/
-        └── <skill-name>/SKILL.md
+project/
+├── CLAUDE.md or AGENTS.md
+├── .agents/
+│   └── skills/
+└── project files...
 ```
 
-规则：
+Rules:
 
-1. `CLAUDE.md` 必须存在。
-2. 描述里提到的 slash skill，必须有对应 `SKILL.md`。
-3. agent 自己用的 skill 放在 agent 项目目录里，不放在开发者全局目录。
+1. The runtime instruction file must exist in the project root.
+2. Any slash-command or workflow mentioned in the description should exist in local docs or skills.
+3. Keep agent-specific instructions in the project, not only in a developer's global home directory.
 
-## Local Test
+## Local Smoke Test
 
-先验证 agent 在本地 daemon 内能工作：
+Use the local daemon path before exposing:
 
 ```bash
-ah chat "<agent-ref>" "Hello, what can you do?"
-ah call "<agent-ref>" --task "Describe your core capability."
+ah chat my-agent "What can you do in this project?"
+ah call my-agent --task "Summarize the repository and propose one improvement."
 ```
 
-如果要继续同一个上下文：
+Useful follow-up checks:
 
 ```bash
-ah session list
+ah session list --agent my-agent
 ah session show <session-id>
+ah task list
+ah ui open
+```
+
+If the agent should work inside an existing context:
+
+```bash
 ah session attach <session-id> "Continue"
 ah session fork <session-id>
 ```
 
-## Expose
-
-### Expose 到 Agents Hot
+## Expose Through Agents Hot
 
 ```bash
-ah agent expose "<agent-ref>" --provider agents-hot
-ah agent show "<agent-ref>" --json
+ah agent expose my-agent --provider agents-hot
+ah agent show my-agent --json
 ```
 
-检查点：
+Check for:
 
-1. binding status = `online`
-2. 存在 `remoteAgentId`
-3. 平台侧 agent `is_published=true`
-4. 平台侧 agent `is_online=true`
+1. A provider binding for `agents-hot`
+2. A healthy binding status
+3. A remote agent id in the JSON output
 
-### Expose 到 Generic A2A
+Then validate from the network side:
 
 ```bash
-ah agent expose "<agent-ref>" \
+ah discover --capability code-review --online --json
+ah call <remote-agent-id> --task "Say hello and list your capabilities."
+```
+
+## Expose Through Generic A2A
+
+```bash
+ah agent expose my-agent \
   --provider generic-a2a \
   --config-json '{"port":4123,"bearerToken":"replace-me"}'
 
-ah agent show "<agent-ref>" --json
+ah agent show my-agent --json
 ```
 
-检查点：
+Check for returned provider details such as:
 
-1. binding status = `online`
-2. config 里出现：
-   - `cardUrl`
-   - `jsonrpcUrl`
-   - `healthUrl`
+- `cardUrl`
+- `jsonrpcUrl`
+- `healthUrl`
 
-## Manage Existing Local Agents
+## Manage Existing Agents
 
 ```bash
 ah agent list
 ah agent show <ref> --json
-ah agent update <ref> --description "..."
-ah agent update <ref> --visibility public
-ah agent remove <ref>
-```
-
-## Delete
-
-删除前先确认是否还需要保留 provider exposure 和本地 session。
-
-```bash
+ah agent update <ref> --description "Updated description"
+ah agent update <ref> --runtime-type codex
+ah agent clone <ref> --name "My Agent Copy"
+ah agent ping <ref>
 ah agent unexpose <ref> --provider agents-hot
 ah agent remove <ref>
 ```
 
+## Skills and MCP
+
+For local skill lifecycle:
+
+```bash
+ah skills init
+ah skills pack
+ah skills publish
+ah skills install <author/slug>
+ah skills installed
+```
+
+For MCP server management:
+
+```bash
+ah mcp import
+ah mcp add my-server npx my-mcp-server
+ah mcp list
+ah mcp remove my-server
+```
+
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `Local agent not found` | 先 `ah agent list`，确认 daemon registry 里是否存在 |
-| `Timed out waiting for ah daemon to start` | 检查 Node 版本、旧 pid/socket、日志 |
-| `Not authenticated` | 先 `ah login` |
-| `Agent is not available` | 检查 provider binding 和平台侧 `is_online` / `is_published` |
-| `generic-a2a private exposures require bearerToken` | 给 `--config-json` 传 `bearerToken` |
-| 本地可聊，线上不可用 | 先看 `agent show --json` 的 binding，再看平台记录 |
+| Problem | What to do |
+| --- | --- |
+| `Local agent not found` | Run `ah agent list` and confirm the daemon registry contains the ref |
+| Daemon will not start | Run `ah doctor`, then inspect `ah daemon logs` |
+| Runtime command is missing | Confirm the runtime executable exists (`claude` or `codex`) |
+| Local chat works, remote calls fail | Check auth, provider binding status, and exposure visibility |
+| Discover returns nothing | Broaden the capability/search term, or confirm the agent is exposed and online |
+| Skill install path is confusing | Check `.agents/skills/` first, then `.claude/skills/` mirrors |
+| generic-a2a exposure fails | Confirm `--config-json` is valid JSON and includes required auth when private |
 
-## Full CLI Reference
-
-完整命令参考见：
+## References
 
 - `references/cli-reference.md`
 - `references/skill-publishing.md`

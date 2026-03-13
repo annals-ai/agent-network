@@ -1,89 +1,124 @@
 # Skill Publishing
 
-Package and publish standalone skills to [agents.hot](https://agents.hot). Works like `npm` for AI skills — `SKILL.md` with YAML frontmatter is the single source of truth.
+Use `ah skills` to package and publish reusable skills to [agents.hot](https://agents.hot).
 
-Skills use **author-scoped naming**: `author/slug` (like npm `@scope/package`). Two authors can publish skills with the same slug without conflict.
+The source of truth is the local `SKILL.md` file with frontmatter.
 
-## 1. Initialize
+## Recommended Workflow
+
+### 1. Initialize
 
 ```bash
 ah skills init [path] --name <name> --description "What this skill does"
 ```
 
-Creates a `SKILL.md` template with YAML frontmatter. If a `SKILL.md` with a `name` in frontmatter already exists, skips without modification.
+This creates a starter `SKILL.md` if one does not already exist.
 
-## 2. Develop
+### 2. Write the skill
 
-Edit `SKILL.md` with the skill content. Add supporting files (e.g. `references/`) as needed. All files in the directory (excluding hidden dirs and `node_modules`) are automatically included when packing.
+Edit `SKILL.md` and add any supporting files beside it:
 
-## 3. Version
+- `references/`
+- small templates
+- scripts the skill needs
 
-```bash
-ah skills version patch [path]     # 1.0.0 → 1.0.1
-ah skills version minor [path]     # 1.0.0 → 1.1.0
-ah skills version major [path]     # 1.0.0 → 2.0.0
-ah skills version 2.5.0 [path]    # Set exact version
-```
+Keep the skill self-contained. If the skill depends on local project context, say so explicitly in `SKILL.md`.
 
-Version is read from and written to the `version` field in SKILL.md frontmatter.
-
-## 4. Pack (optional preview)
+### 3. Version it
 
 ```bash
-ah skills pack [path]              # Creates {name}-{version}.zip locally
+ah skills version patch [path]
+ah skills version minor [path]
+ah skills version major [path]
+ah skills version 2.5.0 [path]
 ```
 
-## 5. Publish
+Version is read from and written back to frontmatter in `SKILL.md`.
+
+### 4. Preview the package
 
 ```bash
-ah skills publish [path]           # Pack + upload to agents.hot
+ah skills pack [path]
 ```
 
-Flags: `--stdin` (pipe SKILL.md content), `--name` (override), `--version` (override), `--private`.
+This builds a local zip such as:
 
-Output includes `author_login` and URL in format: `https://agents.hot/authors/{author}/skills/{slug}`
+```text
+my-skill-1.2.3.zip
+```
 
-## 6. Manage
+### 5. Publish
 
 ```bash
-ah skills info <author/slug>       # View remote details
-ah skills list                     # List your published skills
-ah skills unpublish <author/slug>  # Remove from platform
+ah skills publish [path]
 ```
 
-## 7. Install & Update
+Useful flags:
+
+- `--stdin`
+- `--name`
+- `--version`
+- `--private`
+
+Published skills are addressable as:
+
+```text
+author/slug
+```
+
+## Remote Management
 
 ```bash
-ah skills install <author/slug> [path]   # Install to .claude/skills/
-ah skills install <author/slug> --force   # Overwrite existing
-ah skills update [author/slug] [path]     # Update one or all installed skills
-ah skills remove <slug> [path]            # Remove locally installed skill
-ah skills installed [path]                # List installed skills
-ah skills installed --check-updates       # Check for available updates
+ah skills info <author/slug>
+ah skills list
+ah skills unpublish <author/slug>
 ```
 
-Install downloads skills to `.claude/skills/<slug>/` (or `.agents/skills/<slug>/` if that convention exists).
+## Local Install and Update
 
-Published skills appear on your developer profile at [agents.hot/settings](https://agents.hot/settings?tab=developer).
+```bash
+ah skills install <author/slug> [path]
+ah skills install <author/slug> --force
+ah skills update [author/slug] [path]
+ah skills remove <slug> [path]
+ah skills installed [path]
+```
 
-All `skills` commands output JSON to stdout. Human-readable logs go to stderr.
+Local installation rules:
 
-## SKILL.md Frontmatter Spec
+1. The primary storage location is `.agents/skills/<slug>/`.
+2. The CLI may also create `.claude/skills/<slug>` symlinks for Claude-oriented projects.
+3. Installed skills should stay project-scoped unless there is a clear reason to make them global.
+
+## Output Behavior
+
+`ah skills` commands are designed for automation:
+
+- machine-readable JSON goes to `stdout`
+- human-readable logs go to `stderr`
+
+## Recommended Frontmatter
 
 ```yaml
 ---
 name: my-skill
-description: "What this skill does"
+description: "What it does and when to use it"
 version: 1.0.0
 category: development
 tags: [code-review, ai]
-author: your-github-login
 private: false
 ---
 ```
 
-- `name` (required) — kebab-case identifier
-- `description` (recommended) — what this skill does and when to use it
-- `version` — semver (defaults to `1.0.0` if omitted)
-- `author` — your GitHub login (used for author-scoped identification)
-- All other fields are optional
+Important fields:
+
+- `name`: required, kebab-case
+- `description`: strongly recommended
+- `version`: semver
+
+## Good Publishing Hygiene
+
+1. Pack before publish if the skill includes extra files or scripts.
+2. Keep references concise and action-oriented.
+3. Avoid depending on hidden files or untracked local state.
+4. Test install into a clean project path before telling others to use the skill.

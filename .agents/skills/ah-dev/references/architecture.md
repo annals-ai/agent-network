@@ -1,127 +1,146 @@
-# ah-cli — Architecture Deep Dive
+# ah-cli Architecture
 
-## System Overview
+## Overview
 
-当前架构已经切成三层：
+`ah-cli` is a local-runtime product with four major packages:
 
-1. **Local Daemon Runtime**
-   - 一台机器一个 daemon
-   - 托管多个本地 agent、多个 session、多个 task group
-   - 本地 SQLite 是真源
-2. **Provider Layer**
-   - `agents-hot`: 线上 ingress，经由 Bridge Worker 转入 daemon
-   - `generic-a2a`: 本地 HTTP ingress，直接暴露标准 A2A
-3. **Platform / Bridge Layer**
-   - Agents Hot 负责公开入口、发现、权限、平台 session 索引
-   - Bridge Worker 负责线上转发
+1. `packages/cli`
+2. `packages/ui`
+3. `packages/protocol`
+4. `packages/worker`
 
-## Main Flow
+The daemon-first model is the center of everything.
 
-### 1. Local Flow
+## Local Runtime Layer
 
-```text
-CLI -> daemon socket -> daemon runtime -> adapter -> local session
-```
+`packages/cli` owns:
 
-### 2. Agents Hot Flow
-
-```text
-User -> Agents Hot API -> mesh-client / bridge -> Worker -> provider ingress -> daemon runtime -> adapter
-```
-
-### 3. Generic A2A Flow
-
-```text
-Remote A2A client -> local HTTP ingress -> generic-a2a provider -> daemon runtime -> adapter
-```
-
-## Session Ownership
-
-最关键的变化：
-
-- 本地 daemon 才是 session owner
-- 平台不再拥有 exposed agent 的真实运行时 session
-- 平台 `user_sessions` 只负责用户侧会话索引
-- provider 只负责把请求送到 daemon
-
-## Daemon Responsibilities
-
+- daemon lifecycle
 - agent registry
 - session lifecycle
-- task group lifecycle
+- task-group lifecycle
 - provider bindings
-- local queue / concurrency control
-- sandbox on/off execution
-- owner local session sync back to platform
+- runtime profile dispatch
+- local Web UI backend
+- local persistence
 
-## Provider Responsibilities
+Important consequence:
 
-### agents-hot
+The daemon is the primary owner of local sessions and transcripts.
 
-- 在平台创建 / 更新远端 agent 记录
-- 建立 bridge ingress
-- 把远端请求转回 daemon
+## UI Layer
 
-### generic-a2a
+`packages/ui` plus `packages/cli/src/ui` provide the local browser surface for:
 
-- 启动本地 HTTP server
-- 提供：
-  - `/.well-known/agent-card.json`
-  - `/extended-agent-card`
-  - `/jsonrpc`
-  - `/health`
-- 把 `SendMessage / GetTask / ListTasks / CancelTask` 映射到 daemon
-
-## Platform Responsibilities
-
-- discover / author page / trends
-- auth / cli tokens / device flow
-- public/private/subscription access control
-- chat / call HTTP entrypoints
-- user-facing session index
-- A2A compatibility endpoints
-
-## Storage Model
-
-### Local daemon SQLite
-
-- agents
-- provider_bindings
-- task_groups
 - sessions
-- session_messages
-- session_tags
-
-### Platform database
-
+- messages
+- tasks
 - agents
-- agent_calls
-- user_sessions
-- authors
-- author_subscriptions
-- skills
-- cli_tokens
-- device_codes
-- a2a_tasks / messages / events / push_configs
+- provider binding state
+- logs and runtime status
 
-## Sandbox Model
+This is a local control surface, not the public marketplace UI.
 
-- `sandbox=false`
-  - 直接在 agent `projectPath` 工作
-  - 不自动创建 workspace
-- `sandbox=true`
-  - 建立隔离 workspace
-  - 开启文件流附加能力
+## Provider Layer
 
-sandbox 不决定 session 归属。
+Two current provider directions matter:
 
-## Historical Notes
+### `agents-hot`
 
-以下已经不是当前主架构：
+- exposes a local agent to the hosted platform
+- uses the Bridge Worker path
+- makes the agent discoverable and callable on the network
 
-- `connect-ticket`
-- `ah connect`
-- 每个 agent 一个单独后台进程
-- MCP 作为平台主入口
+### `generic-a2a`
 
-如果旧文档还出现这些概念，以当前 daemon-first 架构为准。
+- starts a local standard A2A ingress
+- serves agent card and JSON-RPC endpoints
+- forwards requests into the daemon runtime
+
+## Worker Layer
+
+`packages/worker` handles:
+
+- platform ingress
+- bridge WebSocket coordination
+- relay HTTP endpoints
+- A2A forwarding between platform and connected runtimes
+- WebRTC signaling relay for file transfer
+
+## Protocol Layer
+
+`packages/protocol` defines the bridge message contracts between:
+
+- CLI runtime
+- Bridge Worker
+- relay HTTP paths
+
+This package is small but high impact. If you change these types, you must audit all producers and consumers.
+
+## Main Runtime Flows
+
+### Local execution
+
+```text
+ah command -> daemon client -> daemon runtime -> runtime profile -> local session store
+```
+
+### Hosted provider execution
+
+```text
+platform request -> worker bridge -> daemon provider binding -> runtime profile -> local session store
+```
+
+### Generic A2A execution
+
+```text
+remote A2A client -> local HTTP ingress -> daemon runtime -> local session store
+```
+
+## Storage Ownership
+
+The local daemon is the system of record for:
+
+- local agents
+- local sessions
+- local session messages
+- local task groups
+- provider bindings
+
+The hosted platform keeps discovery, access, ratings, and remote-facing session/task indexes, but it is not the canonical transcript owner for daemon-backed local work.
+
+## Runtime Profiles
+
+Runtime profile logic lives in:
+
+- `packages/cli/src/adapters/profiles.ts`
+
+Current real built-in profiles:
+
+- `claude`
+- `codex`
+
+If you add or widen runtime support, check:
+
+1. CLI profile registry
+2. daemon runtime dispatch
+3. protocol message assumptions
+4. docs and help text
+
+## Common Failure Modes
+
+1. Changing a command without updating the skill/docs layer
+2. Updating provider behavior without testing local-first resolution
+3. Changing protocol types without updating worker and bridge manager together
+4. Treating platform state as the only source of truth for local runtime data
+
+## Related Main-Repo Integration
+
+`ah-cli` integrates with the main Agents Hot repo for:
+
+- marketplace discovery
+- chat/call HTTP entrypoints
+- A2A 1.0 compatibility endpoints
+- developer session sync paths
+
+When behavior crosses the repo boundary, inspect both codebases before locking in the final design.

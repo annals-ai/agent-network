@@ -1,12 +1,28 @@
 # ah-cli
 
-[![npm version](https://img.shields.io/npm/v/%40annals%2Fah-cli.svg)](https://www.npmjs.com/package/@annals/ah-cli)
-[![npm downloads](https://img.shields.io/npm/dm/%40annals%2Fah-cli.svg)](https://www.npmjs.com/package/@annals/ah-cli)
-[![license](https://img.shields.io/github/license/annals-ai/ah-cli.svg)](./LICENSE)
+`ah-cli` 是一个 daemon-first 的本地 AI Agent 运行时。
 
-[English](./README.md) | [中文](./README.zh-CN.md)
+它的作用不是“把单个 Agent 连上平台”，而是先让你在自己机器上跑好多本地 Agent、管理 session 和 task、打开本地 Web UI 看 transcript 和日志，只有准备好时才把某个 Agent 暴露到 Agents Hot 或标准 A2A 入口。
 
-ah-cli 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。它还自带一个由 daemon 启动的本地 Web UI，方便所有者查看 transcript、task、provider 暴露状态和日志，而不需要把完整历史上传到平台。
+## 核心模型
+
+- 一台机器一个本地 daemon
+- 一个 daemon 管多个 Agent
+- Session 和 Task Group 都在本地
+- transcript 完整历史留在本地
+- provider 只负责暴露入口，不接管运行时主权
+
+## 现在能做什么
+
+- 注册和管理本地 Agent
+- 本地 chat / call，支持恢复会话
+- 在 A2A 网络上 discover 和调用远端 Agent
+- fan-out 多 Agent 协作
+- 把本地 Agent 暴露到 `agents-hot` 或 `generic-a2a`
+- 走 WebRTC P2P 的文件上传 / 下载
+- 发布和安装 skill
+- 挂 MCP server
+- 通过内置本地 Web UI 看 agents / sessions / transcripts / tasks / logs
 
 ## 安装
 
@@ -20,90 +36,81 @@ pnpm add -g @annals/ah-cli
 ah login
 ah daemon start
 ah ui open
-ah agent add --name "Code Reviewer" --project /path/to/project --runtime-type claude
-ah chat "Code Reviewer" "Review this repo"
+ah agent add --name "Code Reviewer" --project /path/to/project
+ah chat "Code Reviewer" "Review this repository"
 ah agent expose "Code Reviewer" --provider agents-hot
-ah agent expose "Code Reviewer" --provider generic-a2a --config-json '{"port":4123,"bearerToken":"replace-me"}'
 ```
 
-## 核心模型
+## 正确工作流
 
-- 一台机器一个本地 daemon
-- 一个 daemon 管多个本地 Agent
-- 每个 Agent 可以有多条 Session
-- 用 Task Group 组织相关工作
-- 是否上线由 provider binding 决定
-- 用本地 Web UI 查看 transcript、task、provider 和日志
+```text
+注册本地 Agent -> 本地验证 -> 准备好时 expose -> 再到网络里 discover / call
+```
 
-本地 SQLite 是 daemon 的唯一真源。完整 transcript 历史保留在本地 daemon，并通过本地 Web UI 查看。`chat` 和 `call` 默认先命中本地 daemon；线上入口只是把请求转回同一个 session core。Agents Hot 是网关、发现和鉴权层，不是长期 transcript surface。
+不要再按旧思路理解成：
 
-## 本地历史界面
+```text
+先在平台创建 -> 再 connect 本地进程
+```
 
-- `ah daemon start` 会同时启动 daemon 和本地 Web UI backend
-- `ah ui open` 会在浏览器中打开当前本地 Web UI
-- `ah ui serve` 会确保 daemon 支撑的 Web UI 正在运行，并打印 URL
-- 第一次成功的交互式 daemon 启动会自动打开浏览器
-- Electron 或 Tauri 只是后续包装方向，不在 v1 范围内
+## Provider
 
-## 主要命令
+### Agents Hot
+
+把本地 Agent 暴露到平台网络：
+
+```bash
+ah agent expose "Code Reviewer" --provider agents-hot
+```
+
+### Generic A2A
+
+把本地 Agent 暴露成标准本地 A2A 入口：
+
+```bash
+ah agent expose "Code Reviewer" \
+  --provider generic-a2a \
+  --config-json '{"port":4123,"bearerToken":"replace-me"}'
+```
+
+## 本地 Web UI
+
+daemon 自带本地 Web UI，用来查看：
+
+- agents
+- sessions
+- transcripts
+- tasks
+- provider 暴露状态
+- logs
+
+```bash
+ah ui serve
+ah ui open
+```
+
+## 主要命令族
 
 ```bash
 ah login
 ah status
 
-ah daemon start|stop|status|logs
-ah ui serve|open
+ah daemon ...
+ah ui ...
+ah agent ...
+ah task ...
+ah session ...
 
-ah agent add --name --project [--sandbox]
-ah agent list
-ah agent show <ref>
-ah agent update <ref>
-ah agent remove <ref>
-ah agent expose <ref> --provider agents-hot|generic-a2a [--config-json '{}']
-ah agent unexpose <ref> --provider agents-hot|generic-a2a
+ah chat ...
+ah call ...
+ah discover ...
+ah fan-out ...
 
-ah task create --title "..."
-ah task list
-ah task show <id>
-ah task archive <id>
-
-ah session list
-ah session show <id>
-ah session attach <id> [message]
-ah session fork <id>
-ah session stop <id>
-ah session archive <id>
-
-ah chat <agent> [message]
-ah call <agent> --task "..."
-ah discover --capability <keyword>
 ah skills ...
-ah subscribe ...
-ah profile ...
-```
-
-## 沙箱
-
-沙箱现在是显式可选能力。
-
-- 不开沙箱：直接在 `--project` 目录工作
-- 开沙箱：创建隔离 workspace，并启用文件相关流程
-
-是否开启沙箱不会改变 session 的归属关系。
-
-## Provider 示例
-
-```bash
-# 暴露到 Agents Hot
-ah agent expose "Code Reviewer" --provider agents-hot
-
-# 在本机 HTTP 端口上暴露标准 Generic A2A 入口
-ah agent expose "Code Reviewer" \
-  --provider generic-a2a \
-  --config-json '{"port":4123,"bearerToken":"replace-me"}'
-
-# 查看生成出来的 card / jsonrpc / health URL
-ah agent show "Code Reviewer" --json
+ah mcp ...
+ah config ...
+ah doctor
+ah pipeline ...
 ```
 
 ## 开发
@@ -111,19 +118,24 @@ ah agent show "Code Reviewer" --json
 ```bash
 pnpm install
 pnpm build
-pnpm test
-pnpm lint
+pnpm exec vitest run
 ```
 
 ## 仓库结构
 
-```txt
+```text
 ah-cli/
 ├── packages/
-│   ├── cli/       # daemon-first CLI
-│   ├── ui/        # 本地 Web UI workspace
-│   ├── protocol/  # bridge 协议类型
-│   └── worker/    # bridge worker / durable objects
+│   ├── cli/
+│   ├── ui/
+│   ├── protocol/
+│   └── worker/
 ├── tests/
 └── CLAUDE.md
 ```
+
+## 链接
+
+- [文档](https://agents.hot/docs/cli)
+- [Agents Hot](https://agents.hot)
+- [npm](https://www.npmjs.com/package/@annals/ah-cli)
