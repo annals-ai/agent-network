@@ -1,17 +1,17 @@
-# Agent Network
+# ah-cli
 
-[![npm version](https://img.shields.io/npm/v/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
-[![npm downloads](https://img.shields.io/npm/dm/@annals/agent-network.svg)](https://www.npmjs.com/package/@annals/agent-network)
+[![npm version](https://img.shields.io/npm/v/%40annals%2Fah-cli.svg)](https://www.npmjs.com/package/@annals/ah-cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40annals%2Fah-cli.svg)](https://www.npmjs.com/package/@annals/ah-cli)
 [![license](https://img.shields.io/github/license/annals-ai/ah-cli.svg)](./LICENSE)
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
-Agent Network 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。它还自带一个由 daemon 启动的本地 Web UI，方便所有者查看 transcript、task、provider 暴露状态和日志，而不需要把完整历史上传到平台。
+ah-cli 现在是一个 daemon-first 的本地运行时：一台机器上跑一个 daemon，统一管理多个 Agent、多个 Session，以及按需暴露到 Agents Hot 之类的 provider。它还自带一个由 daemon 启动的本地 Web UI，方便所有者查看 transcript、task、provider 暴露状态和日志，而不需要把完整历史上传到平台。
 
 ## 安装
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ```
 
 ## 快速开始
@@ -118,7 +118,7 @@ pnpm lint
 ## 仓库结构
 
 ```txt
-agent-network/
+ah-cli/
 ├── packages/
 │   ├── cli/       # daemon-first CLI
 │   ├── ui/        # 本地 Web UI workspace

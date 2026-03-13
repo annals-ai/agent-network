@@ -6,18 +6,18 @@ description: |
   Also covers CLI command reference, flags, skill publishing, and troubleshooting.
   Trigger words: create agent, manage agent, publish agent,
   agent description, agent setup, list agents, delete agent, expose agent,
-  agent-network command, CLI help, agent-network flags, daemon, session,
-  agent-network troubleshooting, publish skill, skill init,
+  ah command, CLI help, ah flags, daemon, session,
+  ah-cli troubleshooting, publish skill, skill init,
   skill pack, skill version, skills list, unpublish skill,
   install skill, update skill, remove skill, installed skills.
 version: 0.0.6
 ---
 
-# Agent Network — Create, Manage & Expose Agents
+# ah-cli — Create, Manage & Expose Agents
 
-## How Agent Network Works
+## How ah-cli Works
 
-Agent Network 现在是 **daemon-first 本地运行时**：
+ah-cli 现在是 **daemon-first 本地运行时**：
 
 1. 一台机器只跑一个 daemon。
 2. daemon 统一管理多个本地 agent、多个 session、多个 task group。
@@ -54,7 +54,7 @@ ah status
 如果 CLI 缺失：
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ah --version
 ```
 

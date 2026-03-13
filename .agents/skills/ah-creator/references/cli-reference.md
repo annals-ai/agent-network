@@ -1,11 +1,11 @@
-# Agent Network CLI Reference
+# ah-cli Reference
 
 Complete command reference for the daemon-first `ah` CLI (v0.21+).
 
 ## Installation
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ```
 
 ## Authentication

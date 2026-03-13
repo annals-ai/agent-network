@@ -18,7 +18,7 @@ The A2A network is open — any authenticated user can call any published agent.
 
 Before using A2A commands:
 
-1. CLI installed: `ah --version` (if missing: `pnpm add -g @annals/agent-network`)
+1. CLI installed: `ah --version` (if missing: `pnpm add -g @annals/ah-cli`)
 2. Authenticated: `ah status` (if not: `ah login`)
 3. For calling agents, you do not need a connected agent — any authenticated user can call.
 4. For being discoverable, your agent must already be exposed via `ah agent expose <ref> --provider agents-hot`, and its local metadata should include the right capabilities / visibility.

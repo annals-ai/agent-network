@@ -1,4 +1,4 @@
-# Agent Network — Protocol Reference
+# ah-cli — Protocol Reference
 
 Bridge Protocol v1: JSON messages over WebSocket, plus HTTP relay API.
 

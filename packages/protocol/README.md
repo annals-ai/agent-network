@@ -1,6 +1,6 @@
 # @annals/bridge-protocol
 
-Type definitions and constants for [Bridge Protocol v1](https://github.com/annals-ai/ah-cli) — the WebSocket protocol between agent-network CLI and the Bridge Worker.
+Type definitions and constants for [Bridge Protocol v1](https://github.com/annals-ai/ah-cli) — the WebSocket protocol between the ah CLI and the Bridge Worker.
 
 ## Install
 
@@ -41,7 +41,7 @@ import { BRIDGE_PROTOCOL_VERSION, BridgeErrorCode } from '@annals/bridge-protoco
 
 ## Related
 
-- [`@annals/agent-network`](https://www.npmjs.com/package/@annals/agent-network) — CLI tool
+- [`@annals/ah-cli`](https://www.npmjs.com/package/@annals/ah-cli) — CLI tool
 - [GitHub repo](https://github.com/annals-ai/ah-cli) — full monorepo
 
 ## License

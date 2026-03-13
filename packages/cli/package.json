@@ -1,11 +1,10 @@
 {
-  "name": "@annals/agent-network",
+  "name": "@annals/ah-cli",
   "version": "0.24.1",
   "description": "CLI bridge connecting local AI agents to the Agents.Hot platform",
   "type": "module",
   "bin": {
-    "ah": "dist/index.js",
-    "agent-network": "dist/index.js"
+    "ah": "dist/index.js"
   },
   "main": "./dist/index.js",
   "engines": {

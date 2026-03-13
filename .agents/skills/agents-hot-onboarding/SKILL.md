@@ -24,7 +24,7 @@ version: 1.0.4
 - 官方 helper skills：
   - `ah-creator`：create / manage / expose
   - `ah-a2a`：discover / call
-  - `ah-dev`：改 agent-network 代码
+  - `ah-dev`：改 ah-cli 代码
 
 ## Step 0 - Environment Check
 
@@ -36,7 +36,7 @@ ah status
 如果 CLI 缺失：
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ah --version
 ```
 

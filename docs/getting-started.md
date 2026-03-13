@@ -1,11 +1,11 @@
 # Getting Started
 
-Agent Network now runs around a single local daemon.
+ah-cli now runs around a single local daemon.
 
 ## Install
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ```
 
 ## Log In

@@ -3,7 +3,7 @@ import * as React from 'react';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 
-const THEME_STORAGE_KEY = 'agent-network.ui.theme';
+const THEME_STORAGE_KEY = 'ah-cli.ui.theme';
 const MEDIA_QUERY = '(prefers-color-scheme: dark)';
 
 function getSystemTheme(): ResolvedTheme {

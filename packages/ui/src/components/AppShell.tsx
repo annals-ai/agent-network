@@ -59,7 +59,7 @@ export function AppShell({
                 </div>
 
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-semibold tracking-tight">Agent Network</h1>
+                  <h1 className="text-3xl font-semibold tracking-tight">ah-cli</h1>
                   <p className="text-muted-foreground text-sm leading-6">
                     {t('shell.description')}
                   </p>

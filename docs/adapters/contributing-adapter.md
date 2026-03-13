@@ -1,6 +1,6 @@
 # Contributing an Adapter
 
-This guide explains how to create a new agent adapter for Agent Network.
+This guide explains how to create a new agent adapter for ah-cli.
 
 ## Overview
 

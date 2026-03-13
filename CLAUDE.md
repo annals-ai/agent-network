@@ -1,4 +1,4 @@
-# Agent Network — Development Guide
+# ah-cli — Development Guide
 
 Agents.Hot 平台的统一 Agent 连接层。让 Claude Code 通过 Bridge Protocol 接入 SaaS 平台。
 
@@ -7,10 +7,10 @@ Agents.Hot 平台的统一 Agent 连接层。让 Claude Code 通过 Bridge Proto
 pnpm monorepo，3 个包：
 
 ```
-agent-network/
+ah-cli/
 ├── packages/
 │   ├── protocol/       # @annals/bridge-protocol — 消息类型与错误码
-│   ├── cli/            # @annals/agent-network — CLI 工具
+│   ├── cli/            # @annals/ah-cli — CLI 工具
 │   └── worker/         # bridge-worker — Cloudflare Worker (Durable Objects)
 ├── tests/              # vitest 测试
 ├── vitest.config.ts
@@ -399,16 +399,16 @@ git tag v<x.y.z> && git push origin v<x.y.z>
 CLI 发版后，必须在 Mac Mini 上做最少两项回归：`A2A` + `Bridge E2E`（Claude 或 Claude Code 至少一条通路）。
 
 **要求**
-- 直接在 Mac Mini 的仓库工作树运行（推荐路径：`/Users/yan/agents-hot/agent-network`）
+- 直接在 Mac Mini 的仓库工作树运行（推荐路径：`/Users/yan/agents-hot/ah-cli`）
 - **不要**把测试脚本临时拷到 `/tmp` 或其他临时目录执行
 - 非交互 SSH 运行 `ah` 时使用 `zsh -lc`（确保 `node` / `ah` PATH 可用）
 
 示例命令（按需替换 agent 名称与 agent_id）：
 
 ```bash
-ssh yan@yandemac-mini.local 'zsh -lc "cd /Users/yan/agents-hot/agent-network && node scripts/e2e-a2a-call.mjs"'
+ssh yan@yandemac-mini.local 'zsh -lc "cd /Users/yan/agents-hot/ah-cli && node scripts/e2e-a2a-call.mjs"'
 
-ssh yan@yandemac-mini.local 'zsh -lc "cd /Users/yan/agents-hot/agent-network && node scripts/e2e-bridge-claude.mjs wss://bridge.agents.hot/ws <platform-secret> <agent-uuid> <bridge-token>"'
+ssh yan@yandemac-mini.local 'zsh -lc "cd /Users/yan/agents-hot/ah-cli && node scripts/e2e-bridge-claude.mjs wss://bridge.agents.hot/ws <platform-secret> <agent-uuid> <bridge-token>"'
 ```
 
 如果 `/Users/yan/agents-hot` 不存在，先在 Mac Mini 上 clone 正式仓库到该路径，再执行测试（不要改用临时目录）。

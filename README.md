@@ -1,7 +1,7 @@
 # ah-cli — 本地 AI Agent 管理工具
 
-<a href="https://www.npmjs.com/package/@annals/agent-network"><img src="https://img.shields.io/npm/v/@annals/agent-network.svg" alt="npm version"></a>
-<a href="https://www.npmjs.com/package/@annals/agent-network"><img src="https://img.shields.io/npm/dm/@annals/agent-network.svg" alt="npm downloads"></a>
+<a href="https://www.npmjs.com/package/@annals/ah-cli"><img src="https://img.shields.io/npm/v/%40annals%2Fah-cli.svg" alt="npm version"></a>
+<a href="https://www.npmjs.com/package/@annals/ah-cli"><img src="https://img.shields.io/npm/dm/%40annals%2Fah-cli.svg" alt="npm downloads"></a>
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/annals-ai/ah-cli.svg" alt="license"></a>
 
 [English](./README.md) | [中文](./README.zh-CN.md)
@@ -19,7 +19,7 @@
 
 ```bash
 # 1. 安装
-npm install -g @annals/agent-network
+npm install -g @annals/ah-cli
 
 # 2. 启动守护进程（后台运行）
 ah daemon start

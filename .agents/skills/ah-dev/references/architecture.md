@@ -1,4 +1,4 @@
-# Agent Network — Architecture Deep Dive
+# ah-cli — Architecture Deep Dive
 
 ## System Overview
 

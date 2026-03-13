@@ -1,11 +1,11 @@
-# @annals/agent-network
+# @annals/ah-cli
 
 Daemon-first CLI for managing local AI agents and optionally exposing them to Agents Hot.
 
 ## Install
 
 ```bash
-pnpm add -g @annals/agent-network
+pnpm add -g @annals/ah-cli
 ```
 
 ## Quickstart
