@@ -104,12 +104,17 @@ describe('GenericA2AProvider', () => {
       },
     });
     expect(cardResponse.status).toBe(200);
-    const card = await cardResponse.json() as { name: string; url: string; capabilities: { streaming: boolean; async: boolean } };
+    const card = await cardResponse.json() as {
+      name: string;
+      supportedInterfaces: Array<{ url: string; protocolBinding: string }>;
+      capabilities: { streaming: boolean; pushNotifications: boolean; extendedAgentCard: boolean };
+    };
     expect(card.name).toBe('Generic A2A Agent');
-    expect(card.url).toBe(String(liveBinding?.config.jsonrpcUrl));
+    expect(card.supportedInterfaces[0]?.url).toBe(String(liveBinding?.config.jsonrpcUrl));
     expect(card.capabilities).toMatchObject({
-      streaming: false,
-      async: true,
+      streaming: true,
+      pushNotifications: false,
+      extendedAgentCard: true,
     });
 
     const unauthorizedResponse = await fetch(String(liveBinding?.config.jsonrpcUrl), {
@@ -129,6 +134,7 @@ describe('GenericA2AProvider', () => {
       method: 'POST',
       headers: {
         Authorization: 'Bearer test-token',
+        'A2A-Version': '1.0',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -148,13 +154,206 @@ describe('GenericA2AProvider', () => {
       result: {
         task: {
           id: string;
-          state: string;
-          messages: Array<{ role: string; parts: Array<{ text: string }> }>;
+          status: { state: string };
+          history: Array<{ role: string; parts: Array<{ text: string }> }>;
         };
       };
     };
     expect(rpc.result.task.id).toBe('task-1');
-    expect(rpc.result.task.state).toBe('TASK_STATE_COMPLETED');
-    expect(rpc.result.task.messages.at(-1)?.parts[0]?.text).toBe('PONG');
+    expect(rpc.result.task.status.state).toBe('TASK_STATE_COMPLETED');
+    expect(rpc.result.task.history.at(-1)?.parts[0]?.text).toBe('PONG');
+  });
+
+  it('honors returnImmediately and historyLength for SendMessage/GetTask', async () => {
+    const binding = store.upsertProviderBinding({
+      agentId: agent.id,
+      provider: 'generic-a2a',
+      status: 'configured',
+      config: {
+        port: 0,
+        bearerToken: 'test-token',
+      },
+      lastSyncedAt: '2026-03-08T00:00:00.000Z',
+    });
+
+    const runtime = {
+      async execute(input: { sessionId?: string; message: string }): Promise<{ session: SessionRecord; agent: DaemonAgent; result: string }> {
+        let session = input.sessionId ? store.getSession(input.sessionId) : null;
+        if (!session) {
+          session = store.createSession({
+            id: input.sessionId,
+            agentId: agent.id,
+            origin: 'generic_a2a',
+            principalType: 'generic_a2a',
+            principalId: 'test',
+            status: 'active',
+            title: 'A2A task',
+          });
+        }
+
+        store.appendMessage({
+          sessionId: session.id,
+          role: 'user',
+          kind: 'call',
+          content: input.message,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        store.appendMessage({
+          sessionId: session.id,
+          role: 'assistant',
+          kind: 'call',
+          content: 'DONE',
+        });
+        session = store.updateSession(session.id, {
+          status: 'idle',
+          touchLastActive: true,
+        });
+
+        return {
+          session,
+          agent,
+          result: 'DONE',
+        };
+      },
+      stopSession(sessionId: string): SessionRecord {
+        return store.stopSession(sessionId);
+      },
+    } as const;
+
+    await provider.startIngress({
+      agent,
+      binding,
+      store,
+      runtime: runtime as never,
+    });
+
+    const liveBinding = store.getProviderBinding(agent.id, 'generic-a2a');
+    const sendResponse = await fetch(String(liveBinding?.config.jsonrpcUrl), {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'A2A-Version': '1.0',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'SendMessage',
+        params: {
+          contextId: 'task-immediate',
+          message: {
+            parts: [{ text: 'ping' }],
+          },
+          configuration: {
+            returnImmediately: true,
+            historyLength: 1,
+          },
+        },
+      }),
+    });
+    expect(sendResponse.status).toBe(200);
+    const sendPayload = await sendResponse.json() as {
+      result: {
+        task: {
+          id: string;
+          status: { state: string };
+          history: Array<{ role: string }>;
+        };
+      };
+    };
+    expect(sendPayload.result.task.id).toBe('task-immediate');
+    expect(['TASK_STATE_SUBMITTED', 'TASK_STATE_WORKING', 'TASK_STATE_COMPLETED']).toContain(sendPayload.result.task.status.state);
+    expect(sendPayload.result.task.history).toHaveLength(1);
+
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    const getResponse = await fetch(String(liveBinding?.config.jsonrpcUrl), {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'A2A-Version': '1.0',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'GetTask',
+        params: {
+          id: 'task-immediate',
+          historyLength: 1,
+        },
+      }),
+    });
+    expect(getResponse.status).toBe(200);
+    const getPayload = await getResponse.json() as {
+      result: {
+        status: { state: string };
+        history: Array<{ role: string; parts: Array<{ text: string }> }>;
+      };
+    };
+    expect(getPayload.result.status.state).toBe('TASK_STATE_COMPLETED');
+    expect(getPayload.result.history).toHaveLength(1);
+    expect(getPayload.result.history[0]?.parts[0]?.text).toBe('DONE');
+  });
+
+  it('returns ContentTypeNotSupportedError for url/raw parts', async () => {
+    const binding = store.upsertProviderBinding({
+      agentId: agent.id,
+      provider: 'generic-a2a',
+      status: 'configured',
+      config: {
+        port: 0,
+        bearerToken: 'test-token',
+      },
+      lastSyncedAt: '2026-03-08T00:00:00.000Z',
+    });
+
+    const runtime = {
+      async execute(): Promise<{ session: SessionRecord; agent: DaemonAgent; result: string }> {
+        throw new Error('should not execute');
+      },
+      stopSession(sessionId: string): SessionRecord {
+        return store.stopSession(sessionId);
+      },
+    } as const;
+
+    await provider.startIngress({
+      agent,
+      binding,
+      store,
+      runtime: runtime as never,
+    });
+
+    const liveBinding = store.getProviderBinding(agent.id, 'generic-a2a');
+    const response = await fetch(String(liveBinding?.config.jsonrpcUrl), {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        'A2A-Version': '1.0',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'SendMessage',
+        params: {
+          contextId: 'task-unsupported',
+          message: {
+            parts: [{ url: 'https://example.com/file.txt', mediaType: 'text/plain' }],
+          },
+        },
+      }),
+    });
+    expect(response.status).toBe(415);
+    const payload = await response.json() as {
+      error: {
+        code: number;
+        data?: Array<{ reason?: string }>;
+      };
+    };
+    expect(payload.error.code).toBe(-32005);
+    expect(payload.error.data?.[0]?.reason).toBe('CONTENT_TYPE_NOT_SUPPORTED');
   });
 });
